@@ -352,3 +352,170 @@ function Dashboard() {
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold">Generated Output</h3>
                 <div className="flex gap-2">
+                  <button onClick={handleDownload} disabled={!generatedBid} className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded disabled:opacity-50 transition">Download .txt</button>
+                  <button onClick={handleCopy} disabled={!generatedBid} className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded disabled:opacity-50 transition">Copy</button>
+                </div>
+              </div>
+
+              {generatedBid ? (
+                <textarea 
+                  value={generatedBid}
+                  onChange={(e) => setGeneratedBid(e.target.value)}
+                  className="w-full flex-grow p-4 border rounded-lg text-sm text-gray-800 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 min-h-[300px]"
+                />
+              ) : (
+                <div className="w-full flex-grow border-2 border-dashed rounded-lg flex items-center justify-center text-gray-400 bg-gray-50 min-h-[300px]">
+                  Your AI-generated bid will appear here.
+                </div>
+              )}
+
+              {generatedBid && (
+                <div className="mt-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">AI Revisions</span>
+                    {isRevising && <span className="text-xs text-purple-600 animate-pulse font-medium">AI is rewriting...</span>}
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <button onClick={() => handleAiRevise("Make this much shorter and more concise.")} disabled={isRevising} className="bg-purple-100 hover:bg-purple-200 text-purple-700 text-sm font-medium py-2 px-3 rounded shadow-sm disabled:opacity-50 transition">🪄 Make Shorter</button>
+                    <button onClick={() => handleAiRevise("Make the tone more aggressive, confident, and persuasive.")} disabled={isRevising} className="bg-purple-100 hover:bg-purple-200 text-purple-700 text-sm font-medium py-2 px-3 rounded shadow-sm disabled:opacity-50 transition">🪄 Make Aggressive</button>
+                    <button onClick={() => handleAiRevise("Fix any grammar mistakes and polish the language to be perfectly professional.")} disabled={isRevising} className="bg-purple-100 hover:bg-purple-200 text-purple-700 text-sm font-medium py-2 px-3 rounded shadow-sm disabled:opacity-50 transition">🪄 Fix Grammar</button>
+                  </div>
+                  <hr className="my-2 border-gray-100"/>
+                  <button 
+                    onClick={handleSaveRevision} disabled={isSavingRevision}
+                    className="w-full bg-green-50 text-green-700 border border-green-200 font-bold py-2 px-4 rounded hover:bg-green-100 disabled:opacity-50 transition flex justify-center items-center gap-2"
+                  >
+                    {isSavingRevision ? "Saving Edit..." : "Save Manual Edit to History"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* --- TAB: HISTORY --- */}
+        {activeTab === 'history' && (
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 className="text-xl font-bold mb-6">Your Past Generated Bids</h3>
+            {isLoadingHistory ? (
+              <p className="text-gray-500">Loading history...</p>
+            ) : historyBids.length === 0 ? (
+              <p className="text-gray-500">No bids generated yet.</p>
+            ) : (
+              <div className="space-y-6">
+                {historyBids.map((bid) => {
+                  const latestRevision = bid.revisions && bid.revisions.length > 0 
+                    ? bid.revisions[bid.revisions.length - 1] 
+                    : null;
+                  return (
+                    <div key={bid._id} className="border border-gray-200 rounded-lg p-5 hover:border-blue-300 transition">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex gap-2">
+                          <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">Tone: {bid.tone}</span>
+                          <span className="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded">Size: {bid.size}</span>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {new Date(bid.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="mb-4">
+                        <h4 className="text-sm font-bold text-gray-700 mb-1">Original Lead:</h4>
+                        <p className="text-sm text-gray-600 italic bg-gray-50 p-3 rounded line-clamp-2">"{bid.lead_text}"</p>
+                      </div>
+                      {latestRevision && (
+                        <div>
+                          <h4 className="text-sm font-bold text-gray-700 mb-1">Generated Bid (Latest Revision):</h4>
+                          <textarea 
+                            readOnly 
+                            value={latestRevision.content}
+                            className="w-full text-sm text-gray-800 bg-white border border-gray-200 rounded p-3 h-32 resize-none"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* --- TAB: KNOWLEDGE BASE (ADMIN) --- */}
+        {activeTab === 'kb' && role === 'admin' && (
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 max-w-2xl">
+            <h3 className="text-xl font-bold mb-2">Upload Past Projects (CSV)</h3>
+            <p className="text-gray-500 text-sm mb-6">Upload a CSV containing your company's past successful projects. This trains the AI on your history.</p>
+            
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50 mb-4">
+              <input 
+                type="file" accept=".csv"
+                onChange={(e) => setFile(e.target.files[0])}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-4"
+              />
+            </div>
+            
+            <button 
+              onClick={handleUpload} disabled={!file || isUploading}
+              className="bg-green-600 text-white font-bold py-2 px-6 rounded hover:bg-green-700 disabled:opacity-50 transition flex items-center gap-2"
+            >
+              {isUploading ? "Processing & Training AI..." : "Upload & Train AI"}
+            </button>
+          </div>
+        )}
+
+        {/* --- TAB: SETTINGS (ADMIN) --- */}
+        {activeTab === 'settings' && role === 'admin' && (
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 max-w-2xl">
+            <h3 className="text-xl font-bold mb-6 text-gray-800">Global AI Instructions</h3>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Banned Phrases (Comma Separated)</label>
+                <textarea 
+                  value={settings.banned_phrases}
+                  onChange={(e) => setSettings({...settings, banned_phrases: e.target.value})}
+                  placeholder="e.g., hope this finds you well, delve, synergy, robust"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  rows="3"
+                />
+                <p className="text-xs text-gray-500 mt-1">The AI will be strictly instructed to avoid using these cliché phrases.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Confidential Keywords (Comma Separated)</label>
+                <textarea 
+                  value={settings.confidential_keywords}
+                  onChange={(e) => setSettings({...settings, confidential_keywords: e.target.value})}
+                  placeholder="e.g., budget, project stealth, $"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  rows="3"
+                />
+                <p className="text-xs text-gray-500 mt-1">Keywords that should trigger a privacy warning.</p>
+              </div>
+
+              <button 
+                onClick={handleSaveSettings} disabled={isSavingSettings}
+                className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
+              >
+                {isSavingSettings ? "Saving..." : "Save Settings to Database"}
+              </button>
+            </div>
+          </div>
+        )}
+
+      </main>
+    </div>
+  );
+}
+
+// --- 3. MAIN APP ROUTER ---
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
