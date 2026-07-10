@@ -8,10 +8,14 @@ app = FastAPI(title="Bid Helper Agent API")
 # Enable CORS so the React frontend can talk to the FastAPI backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins for local development
+    # REPLACE the "*" with your actual live Vercel URL!
+    allow_origins=[
+        "https://bid-helper-agent-nine.vercel.app", 
+        "http://localhost:5173"
+    ],  
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],  
+    allow_headers=["*"],  
 )
 
 # Connect the routers
