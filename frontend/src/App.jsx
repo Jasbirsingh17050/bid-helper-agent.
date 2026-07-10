@@ -7,6 +7,7 @@ function Toast({ message, type, onClose }) {
   if (!message) return null;
   const bgColor = type === 'error' ? 'bg-red-500' : 'bg-green-500';
   return (
+    // ... existing code ...
     <div className={`fixed bottom-6 right-6 ${bgColor} text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-4 z-50 transition-all duration-300 transform translate-y-0`}>
       <span className="font-semibold">{message}</span>
       <button onClick={onClose} className="text-white hover:text-gray-200 font-bold text-xl leading-none">&times;</button>
@@ -14,64 +15,118 @@ function Toast({ message, type, onClose }) {
   );
 }
 
-// --- 1. LOGIN COMPONENT ---
-function Login() {
+// --- 1. AUTH COMPONENT (LOGIN & SIGNUP) ---
+function Auth() {
+  const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('admin');
   const [error, setError] = useState('');
+  const [toast, setToast] = useState({ message: '', type: '' });
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast({ message: '', type: '' }), 4000);
+  };
+
+  const handleAuth = async (e) => {
     e.preventDefault();
     setError('');
-    try {
-      const params = new URLSearchParams();
-      params.append('username', username);
-      params.append('password', password);
+    
+    if (isLogin) {
+      try {
+        const params = new URLSearchParams();
+        params.append('username', username);
+        params.append('password', password);
 
-      const response = await axios.post('https://bid-helper-agent.onrender.com/auth/login', params, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-      });
+        const response = await axios.post('https://bid-helper-agent.onrender.com/auth/login', params, {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
 
-      localStorage.setItem('token', response.data.access_token);
-      localStorage.setItem('role', response.data.role);
-      localStorage.setItem('username', response.data.username);
+        localStorage.setItem('token', response.data.access_token);
+        localStorage.setItem('role', response.data.role);
+        localStorage.setItem('username', response.data.username);
 
-      navigate('/dashboard');
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Login failed');
+        navigate('/dashboard');
+      } catch (err) {
+        setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
+      }
+    } else {
+      try {
+        await axios.post('https://bid-helper-agent.onrender.com/auth/signup', {
+          username: username,
+          password: password,
+          role: role
+        });
+        showToast("Account created successfully! Please log in.", "success");
+        setIsLogin(true); 
+        setPassword(''); 
+      } catch (err) {
+        setError(err.response?.data?.detail || 'Sign up failed.');
+      }
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100">
+      <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: '' })} />
       <div className="bg-white p-8 rounded-xl shadow-lg w-96">
-        <h2 className="text-2xl font-bold text-center mb-6 text-blue-600">Bid Helper Agent</h2>
+        <h2 className="text-2xl font-bold text-center mb-6 text-blue-600">
+          {isLogin ? "Bid Helper Agent" : "Create Account"}
+        </h2>
         {error && <div className="bg-red-100 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>}
-        <form onSubmit={handleLogin} className="space-y-4">
+        
+        <form onSubmit={handleAuth} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Username</label>
-            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" required />
+            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" required minLength="3" />
           </div>
+          
           <div>
             <label className="block text-sm font-medium text-gray-700">Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" required />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" required minLength="6" />
           </div>
+
+          {!isLogin && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Role</label>
+              <select value={role} onChange={(e) => setRole(e.target.value)} className="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500">
+                <option value="admin">Admin</option>
+                <option value="team">Team Member</option>
+              </select>
+            </div>
+          )}
+
           <button type="submit" className="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition">
-            Sign In
+            {isLogin ? "Sign In" : "Sign Up"}
           </button>
         </form>
+
+        <div className="mt-4 text-center text-sm text-gray-600">
+          {isLogin ? "Don't have an account? " : "Already have an account? "}
+          <button onClick={() => { setIsLogin(!isLogin); setError(''); }} type="button" className="text-blue-600 font-bold hover:underline">
+            {isLogin ? "Sign Up" : "Log In"}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
 // --- 2. DASHBOARD COMPONENT ---
-function Dashboard() {
-  const navigate = useNavigate();
-  const token = localStorage.getItem('token');
-  const role = localStorage.getItem('role');
-  const username = localStorage.getItem('username');
+// ... existing code ...
+// --- 3. MAIN APP ROUTER ---
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Auth />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Routes>
+    </BrowserRouter>
+  );
+};
 
   // UI States
   const [activeTab, setActiveTab] = useState('generate');
