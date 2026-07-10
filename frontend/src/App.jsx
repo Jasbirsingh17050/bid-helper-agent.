@@ -50,7 +50,13 @@ function Auth() {
 
         navigate('/dashboard');
       } catch (err) {
-        setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
+        // SMART ERROR HANDLING
+        if (err.response) {
+          const detail = err.response.data?.detail;
+          setError(typeof detail === 'string' ? detail : `Server Error (${err.response.status}). Check Render logs.`);
+        } else {
+          setError(`Network Error: The backend server might be asleep or unreachable.`);
+        }
       }
     } else {
       // Handle Sign Up
@@ -64,7 +70,17 @@ function Auth() {
         setIsLogin(true); // Switch back to login view
         setPassword(''); // Clear password for safety
       } catch (err) {
-        setError(err.response?.data?.detail || 'Sign up failed.');
+        // SMART ERROR HANDLING
+        if (err.response) {
+          const detail = err.response.data?.detail;
+          if (err.response.status === 422) {
+             setError("Validation Error: Make sure your username is at least 3 characters and password is at least 6 characters.");
+          } else {
+             setError(typeof detail === 'string' ? detail : `Server Error (${err.response.status}). Database might be misconfigured.`);
+          }
+        } else {
+          setError(`Network Error: The backend server might be asleep or unreachable.`);
+        }
       }
     }
   };
