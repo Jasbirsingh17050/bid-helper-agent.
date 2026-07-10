@@ -1,0 +1,18 @@
+--- Backend (Python) ---
+
+backend/venv/
+backend/pycache/
+backend/qdrant_data/
+backend/.env
+
+--- Frontend (Node) ---
+
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+--- General / Root ---
+
+node_modules/
+.DS_Store
+.env
