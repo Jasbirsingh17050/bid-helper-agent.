@@ -29,7 +29,7 @@ function Login() {
       params.append('username', username);
       params.append('password', password);
 
-      const response = await axios.post('http://localhost:8000/auth/login', params, {
+      const response = await axios.post('https://bid-helper-agent.onrender.com/auth/login', params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
 
@@ -131,7 +131,7 @@ function Dashboard() {
 
     try {
       const response = await axios.post(
-        'http://localhost:8000/generate/bid', 
+        'https://bid-helper-agent.onrender.com/generate/bid', 
         { lead_text: leadText, tone: tone, size: size },
         { headers: { Authorization: `Bearer ${token}` } } 
       );
@@ -150,7 +150,7 @@ function Dashboard() {
     setIsRevising(true);
     try {
       const response = await axios.post(
-        'http://localhost:8000/generate/ai-revise',
+        'https://bid-helper-agent.onrender.com/generate/ai-revise',
         {
           generation_id: currentGenerationId,
           current_content: generatedBid,
@@ -172,7 +172,7 @@ function Dashboard() {
     setIsSavingRevision(true);
     try {
       await axios.post(
-        `http://localhost:8000/history/${currentGenerationId}/revise`,
+        `https://bid-helper-agent.onrender.com/history/${currentGenerationId}/revise`,
         { content: generatedBid, action_type: 'manual_edit' },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -212,7 +212,7 @@ function Dashboard() {
 
     try {
       const response = await axios.post(
-        'http://localhost:8000/kb/upload',
+        'https://bid-helper-agent.onrender.com/kb/upload',
         formData,
         { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
       );
@@ -228,7 +228,7 @@ function Dashboard() {
   const loadHistory = async () => {
     setIsLoadingHistory(true);
     try {
-      const response = await axios.get('http://localhost:8000/history/my-bids', {
+      const response = await axios.get('https://bid-helper-agent.onrender.com/history/my-bids', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setHistoryBids(response.data.bids);
@@ -241,7 +241,7 @@ function Dashboard() {
 
   const loadSettings = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/settings/', {
+      const response = await axios.get('https://bid-helper-agent.onrender.com/settings/', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSettings({
@@ -262,7 +262,7 @@ function Dashboard() {
         banned_phrases: settings.banned_phrases.split(',').map(s => s.trim()).filter(Boolean),
         confidential_keywords: settings.confidential_keywords.split(',').map(s => s.trim()).filter(Boolean)
       };
-      await axios.put('http://localhost:8000/settings/', formattedSettings, {
+      await axios.put('https://bid-helper-agent.onrender.com/settings/', formattedSettings, {
         headers: { Authorization: `Bearer ${token}` }
       });
       showToast("Settings saved successfully!", "success");
@@ -505,17 +505,5 @@ function Dashboard() {
 
       </main>
     </div>
-  );
-}
-
-// --- 3. MAIN APP ROUTER ---
-export default function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-      </Routes>
-    </BrowserRouter>
   );
 }
