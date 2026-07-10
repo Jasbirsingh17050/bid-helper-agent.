@@ -1,12 +1,11 @@
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams, PointStruct
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 import uuid
 
-# 1. Initialize the embedding model (runs locally, 100% free!)
-# 'all-MiniLM-L6-v2' is fast, lightweight, and perfect for semantic search.
-print("Loading AI Embedding Model (this might take a few seconds the very first time)...")
-model = SentenceTransformer('all-MiniLM-L6-v2')
+# 1. Initialize the lightweight FastEmbed model (Replaces heavy PyTorch)
+print("Loading Lightweight AI Embedding Model...")
+model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
 print("AI Model loaded successfully!")
 
 # 2. Initialize Qdrant Client (saving data locally to a folder named 'qdrant_data')
@@ -20,7 +19,6 @@ try:
 except Exception:
     qdrant.create_collection(
         collection_name=COLLECTION_NAME,
-        # Our MiniLM model outputs vectors with exactly 384 dimensions
         vectors_config=VectorParams(size=384, distance=Distance.COSINE),
     )
 
@@ -39,17 +37,18 @@ async def upsert_batch_to_qdrant(df, batch_id):
     """Embeds and uploads a dataframe of projects to Qdrant."""
     points = []
     
-    # Replace any empty CSV cells (NaN) with empty strings so the AI doesn't crash
+    # Replace any empty CSV cells (NaN) with empty strings
     df = df.fillna("")
     
     for index, row in df.iterrows():
         # 1. Create a rich text representation of the project
         text_content = generate_project_text(row)
         
-        # 2. Generate the embedding (vector)
-        vector = model.encode(text_content).tolist()
+        # 2. Generate the embedding using FastEmbed
+        # FastEmbed returns a generator, so we convert to a list and grab the first item
+        vector = list(model.embed([text_content]))[0].tolist()
         
-        # 3. Prepare metadata payload (we include the batch_id for filtering later!)
+        # 3. Prepare metadata payload
         payload = row.to_dict()
         payload["batch_id"] = batch_id
         payload["text_content"] = text_content
@@ -70,9 +69,9 @@ async def upsert_batch_to_qdrant(df, batch_id):
 async def search_projects(lead_text: str, limit: int = 3):
     """Embeds the lead text and searches Qdrant for the closest matching projects."""
     # 1. Convert the user's job lead into an embedding
-    query_vector = model.encode(lead_text).tolist()
+    query_vector = list(model.embed([lead_text]))[0].tolist()
     
-    # 2. Search Qdrant (Using the new query_points method for Qdrant 1.18.0+)
+    # 2. Search Qdrant
     search_results = qdrant.query_points(
         collection_name=COLLECTION_NAME,
         query=query_vector,
@@ -81,7 +80,6 @@ async def search_projects(lead_text: str, limit: int = 3):
     
     # 3. Format the results
     results = []
-    # Qdrant's query_points returns an object with a .points attribute
     for hit in search_results.points:
         results.append({
             "score": hit.score,
