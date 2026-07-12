@@ -7,6 +7,8 @@ import os
 from dotenv import load_dotenv
 from database.db import users_collection
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from google.oauth2 import id_token
+from google.auth.transport import requests
 
 load_dotenv()
 
@@ -28,6 +30,9 @@ class UserSignUp(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     password: str = Field(..., min_length=6)
     role: str = Field(default="team", description="Role can be 'admin' or 'team'")
+
+class GoogleToken(BaseModel):
+    token: str
 
 # Helper Functions
 def hash_password(password: str) -> str:
@@ -145,3 +150,48 @@ async def login(credentials: OAuth2PasswordRequestForm = Depends()):
         "role": user["role"],
         "username": user["username"]
     }
+
+@router.post("/google")
+async def google_login(google_data: GoogleToken):
+    try:
+        # 1. Verify token with Google
+        CLIENT_ID = "742455468037-15nrh5etl1r764tu66958coe6437rs4m.apps.googleusercontent.com"
+        idinfo = id_token.verify_oauth2_token(google_data.token, requests.Request(), CLIENT_ID)
+        
+        # 2. Extract user info
+        email = idinfo['email']
+        username = email.split('@')[0] # e.g. "john.doe" from "john.doe@gmail.com"
+        
+        # 3. Check if user exists in our DB
+        user = await users_collection.find_one({"username": username})
+        
+        if not user:
+            # Create a new user automatically
+            new_user_doc = {
+                "username": username,
+                "password_hash": "GOOGLE_AUTH_NO_PASSWORD", 
+                "role": "team", # Default role for new Google users
+                "is_active": True,
+                "created_at": datetime.utcnow(),
+                "email": email
+            }
+            await users_collection.insert_one(new_user_doc)
+            user = new_user_doc
+            
+        # 4. Check if active
+        if not user.get("is_active", True):
+            raise HTTPException(status_code=403, detail="Account deactivated.")
+            
+        # 5. Generate standard JWT token
+        token_data = {"sub": user["username"], "role": user["role"]}
+        access_token = create_access_token(token_data)
+
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "role": user["role"],
+            "username": user["username"]
+        }
+        
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid Google token.")
