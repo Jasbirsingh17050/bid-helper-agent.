@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
-import { jwtDecode } from "jwt-decode";
 
 // --- PREMIUM TOAST COMPONENT ---
 function Toast({ message, type, onClose }) {
@@ -54,7 +53,6 @@ function Auth() {
     setError('');
     
     if (isLogin) {
-      // Handle Sign In
       try {
         const params = new URLSearchParams();
         params.append('username', username);
@@ -72,13 +70,12 @@ function Auth() {
       } catch (err) {
         if (err.response) {
           const detail = err.response.data?.detail;
-          setError(typeof detail === 'string' ? detail : `Server Error (${err.response.status}). Check Render logs.`);
+          setError(typeof detail === 'string' ? detail : `Server Error (${err.response.status}).`);
         } else {
-          setError(`Network Error: The backend server might be asleep or unreachable.`);
+          setError(`Network Error: The backend server might be asleep.`);
         }
       }
     } else {
-      // Handle Sign Up
       try {
         await axios.post('https://bid-helper-agent.onrender.com/auth/signup', {
           username: username,
@@ -91,13 +88,9 @@ function Auth() {
       } catch (err) {
         if (err.response) {
           const detail = err.response.data?.detail;
-          if (err.response.status === 422) {
-             setError("Validation Error: Make sure your username is at least 3 characters and password is at least 6 characters.");
-          } else {
-             setError(typeof detail === 'string' ? detail : `Server Error (${err.response.status}). Database might be misconfigured.`);
-          }
+          setError(typeof detail === 'string' ? detail : `Sign up failed.`);
         } else {
-          setError(`Network Error: The backend server might be asleep or unreachable.`);
+          setError(`Network Error: The backend server might be asleep.`);
         }
       }
     }
@@ -169,7 +162,6 @@ function Dashboard() {
   const role = localStorage.getItem('role');
   const username = localStorage.getItem('username');
 
-  // UI States
   const [activeTab, setActiveTab] = useState('generate');
   const [toast, setToast] = useState({ message: '', type: '' });
 
@@ -178,7 +170,6 @@ function Dashboard() {
     setTimeout(() => setToast({ message: '', type: '' }), 4000);
   };
 
-  // Generation States
   const [leadText, setLeadText] = useState('');
   const [tone, setTone] = useState('Professional');
   const [size, setSize] = useState('Medium');
@@ -188,22 +179,18 @@ function Dashboard() {
   const [isSavingRevision, setIsSavingRevision] = useState(false);
   const [isRevising, setIsRevising] = useState(false);
 
-  // History States
   const [historyBids, setHistoryBids] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
-  // KB & Settings States
   const [file, setFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [settings, setSettings] = useState({ banned_phrases: '', confidential_keywords: '' });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
-  // Security Check
   useEffect(() => {
     if (!token) navigate('/');
   }, [token, navigate]);
 
-  // Load Settings if Admin
   useEffect(() => {
     if (activeTab === 'settings' && role === 'admin') {
       loadSettings();
@@ -365,13 +352,9 @@ function Dashboard() {
     }
   };
 
-  // Helper function using normal strings to prevent Vercel build crashes
-  const getTabClass = (tabName) => {
-    if (activeTab === tabName) {
-      return "pb-4 text-sm font-medium border-b-2 border-blue-600 text-blue-600";
-    }
-    return "pb-4 text-sm font-medium text-gray-500 hover:text-gray-700";
-  };
+  // Safe standard strings for classes
+  const tabActive = "pb-4 text-sm font-medium border-b-2 border-blue-600 text-blue-600";
+  const tabInactive = "pb-4 text-sm font-medium text-gray-500 hover:text-gray-700";
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -396,12 +379,12 @@ function Dashboard() {
         
         {/* Tabs */}
         <div className="flex space-x-6 border-b border-gray-200 mb-6">
-          <button onClick={() => setActiveTab('generate')} className={getTabClass('generate')}>Generate Bid</button>
-          <button onClick={() => { setActiveTab('history'); loadHistory(); }} className={getTabClass('history')}>History</button>
+          <button onClick={() => setActiveTab('generate')} className={activeTab === 'generate' ? tabActive : tabInactive}>Generate Bid</button>
+          <button onClick={() => { setActiveTab('history'); loadHistory(); }} className={activeTab === 'history' ? tabActive : tabInactive}>History</button>
           {role === 'admin' && (
             <>
-              <button onClick={() => setActiveTab('kb')} className={getTabClass('kb')}>Knowledge Base (Admin)</button>
-              <button onClick={() => setActiveTab('settings')} className={getTabClass('settings')}>Settings (Admin)</button>
+              <button onClick={() => setActiveTab('kb')} className={activeTab === 'kb' ? tabActive : tabInactive}>Knowledge Base (Admin)</button>
+              <button onClick={() => setActiveTab('settings')} className={activeTab === 'settings' ? tabActive : tabInactive}>Settings (Admin)</button>
             </>
           )}
         </div>
@@ -438,12 +421,6 @@ function Dashboard() {
                 onClick={handleGenerate} disabled={isGenerating}
                 className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition flex justify-center items-center gap-2"
               >
-                {isGenerating && (
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                )}
                 {isGenerating ? "Analyzing & Generating..." : "Generate Custom Bid"}
               </button>
             </div>
