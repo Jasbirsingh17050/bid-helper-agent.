@@ -365,9 +365,12 @@ function Dashboard() {
     }
   };
 
-  // Helper function to keep JSX clean and avoid bundler parsing errors on long lines
+  // Helper function using normal strings to prevent Vercel build crashes
   const getTabClass = (tabName) => {
-    return `pb-4 text-sm font-medium ${activeTab === tabName ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`;
+    if (activeTab === tabName) {
+      return "pb-4 text-sm font-medium border-b-2 border-blue-600 text-blue-600";
+    }
+    return "pb-4 text-sm font-medium text-gray-500 hover:text-gray-700";
   };
 
   return (
@@ -605,3 +608,18 @@ function Dashboard() {
   );
 }
 
+// --- 3. MAIN APP ROUTER ---
+export default function App() {
+  const clientId = "742455468037-15nrh5etl1r764tu66958coe6437rs4m.apps.googleusercontent.com";
+  
+  return (
+    <GoogleOAuthProvider clientId={clientId}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Auth />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Routes>
+      </BrowserRouter>
+    </GoogleOAuthProvider>
+  );
+}
