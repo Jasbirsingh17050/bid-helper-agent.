@@ -31,10 +31,22 @@ function Auth() {
     setTimeout(() => setToast({ message: '', type: '' }), 4000);
   };
 
-  const handleGoogleSuccess = (credentialResponse) => {
-    const decoded = jwtDecode(credentialResponse.credential);
-    console.log("Google User:", decoded);
-    showToast(`Google Auth successful for ${decoded.email}! Let's update the Python backend next.`, "success");
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      // Send the secure Google token directly to our Python backend
+      const response = await axios.post('https://bid-helper-agent.onrender.com/auth/google', {
+        token: credentialResponse.credential
+      });
+
+      // Save our app's JWT token and login
+      localStorage.setItem('token', response.data.access_token);
+      localStorage.setItem('role', response.data.role);
+      localStorage.setItem('username', response.data.username);
+
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.detail || "Google Login failed on the server.");
+    }
   };
 
   const handleAuth = async (e) => {
@@ -58,7 +70,6 @@ function Auth() {
 
         navigate('/dashboard');
       } catch (err) {
-        // SMART ERROR HANDLING
         if (err.response) {
           const detail = err.response.data?.detail;
           setError(typeof detail === 'string' ? detail : `Server Error (${err.response.status}). Check Render logs.`);
@@ -75,10 +86,9 @@ function Auth() {
           role: role
         });
         showToast("Account created successfully! Please log in.", "success");
-        setIsLogin(true); // Switch back to login view
-        setPassword(''); // Clear password for safety
+        setIsLogin(true); 
+        setPassword(''); 
       } catch (err) {
-        // SMART ERROR HANDLING
         if (err.response) {
           const detail = err.response.data?.detail;
           if (err.response.status === 422) {
@@ -595,18 +605,3 @@ function Dashboard() {
   );
 }
 
-// --- 3. MAIN APP ROUTER ---
-export default function App() {
-  const clientId = "742455468037-15nrh5etl1r764tu66958coe6437rs4m.apps.googleusercontent.com";
-  
-  return (
-    <GoogleOAuthProvider clientId={clientId}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-        </Routes>
-      </BrowserRouter>
-    </GoogleOAuthProvider>
-  );
-}
