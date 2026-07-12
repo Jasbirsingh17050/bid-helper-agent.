@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+import { jwtDecode } from "jwt-decode";
 
 // --- PREMIUM TOAST COMPONENT ---
 function Toast({ message, type, onClose }) {
@@ -27,6 +29,12 @@ function Auth() {
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast({ message: '', type: '' }), 4000);
+  };
+
+  const handleGoogleSuccess = (credentialResponse) => {
+    const decoded = jwtDecode(credentialResponse.credential);
+    console.log("Google User:", decoded);
+    showToast(`Google Auth successful for ${decoded.email}! Let's update the Python backend next.`, "success");
   };
 
   const handleAuth = async (e) => {
@@ -120,7 +128,20 @@ function Auth() {
           </button>
         </form>
 
-        <div className="mt-4 text-center text-sm text-gray-600">
+        <div className="mt-6 flex items-center justify-between">
+          <hr className="w-full border-gray-300" />
+          <span className="p-2 text-sm text-gray-400 mb-1">OR</span>
+          <hr className="w-full border-gray-300" />
+        </div>
+        
+        <div className="mt-4 flex justify-center">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setError("Google Login Failed")}
+          />
+        </div>
+
+        <div className="mt-6 text-center text-sm text-gray-600">
           {isLogin ? "Don't have an account? " : "Already have an account? "}
           <button onClick={() => { setIsLogin(!isLogin); setError(''); }} type="button" className="text-blue-600 font-bold hover:underline">
             {isLogin ? "Sign Up" : "Log In"}
@@ -576,12 +597,16 @@ function Dashboard() {
 
 // --- 3. MAIN APP ROUTER ---
 export default function App() {
+  const clientId = "742455468037-15nrh5etl1r764tu66958coe6437rs4m.apps.googleusercontent.com";
+  
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Auth />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-      </Routes>
-    </BrowserRouter>
+    <GoogleOAuthProvider clientId={clientId}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Auth />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Routes>
+      </BrowserRouter>
+    </GoogleOAuthProvider>
   );
 }
