@@ -101,3 +101,34 @@ async def update_outcome(
     except Exception as e:
         logger.error(f"Database error in update_outcome: {e}")
         raise HTTPException(status_code=500, detail="Could not update outcome.")
+
+@router.get("/public/{generation_id}")
+async def get_public_proposal(generation_id: str):
+    """Public endpoint to fetch a proposal by ID for client sharing."""
+    try:
+        try:
+            obj_id = ObjectId(generation_id)
+            query = {"$or": [{"_id": obj_id}, {"_id": generation_id}]}
+        except Exception:
+            query = {"_id": generation_id}
+
+        doc = await generations_collection.find_one(query)
+        if not doc:
+            raise HTTPException(status_code=404, detail="Proposal not found.")
+
+        # Get the latest revision or fallback to original content
+        if doc.get("revisions") and len(doc["revisions"]) > 0:
+            content = doc["revisions"][-1]["content"]
+        else:
+            content = doc.get("content", "Content unavailable.")
+
+        return {
+            "content": content,
+            "created_at": doc.get("created_at"),
+            "project_category": doc.get("project_category")
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Database error in get_public_proposal: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve public proposal.")
