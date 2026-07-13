@@ -6,7 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import { 
   Sparkles, Copy, Download, Save, Send, LogOut, 
   LayoutDashboard, History, Database, Settings as SettingsIcon, 
-  CheckCircle2, AlertCircle 
+  CheckCircle2, AlertCircle, Zap
 } from 'lucide-react';
 
 // --- PREMIUM TOAST COMPONENT ---
@@ -14,10 +14,22 @@ function Toast({ message, type, onClose }) {
   if (!message) return null;
   const isError = type === 'error';
   return (
-    <div className={`fixed bottom-6 right-6 ${isError ? 'bg-red-600' : 'bg-green-600'} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 z-50 animate-bounce-in`}>
-      {isError ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
+    <div className={`fixed bottom-6 right-6 ${isError ? 'bg-red-500/90 border-red-500/50' : 'bg-emerald-500/90 border-emerald-500/50'} backdrop-blur-xl border text-white px-6 py-4 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] flex items-center gap-3 z-50 animate-bounce-in`}>
+      {isError ? <AlertCircle size={20} className="text-white" /> : <CheckCircle2 size={20} className="text-white" />}
       <span className="font-semibold tracking-wide">{message}</span>
-      <button onClick={onClose} className="ml-4 text-white hover:text-gray-200 font-bold text-xl">&times;</button>
+      <button onClick={onClose} className="ml-4 text-white/70 hover:text-white font-bold text-xl transition-colors">&times;</button>
+    </div>
+  );
+}
+
+// --- AMBIENT BACKGROUND COMPONENT ---
+function AmbientBackground() {
+  return (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] mix-blend-screen" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-cyan-600/10 rounded-full blur-[150px] mix-blend-screen" />
+      <div className="absolute top-[40%] left-[60%] w-[400px] h-[400px] bg-purple-600/15 rounded-full blur-[150px] mix-blend-screen" />
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wMykiLz48L3N2Zz4=')] opacity-50" />
     </div>
   );
 }
@@ -82,56 +94,58 @@ function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-100">
+    <div className="min-h-screen flex items-center justify-center bg-[#0B0F19] text-gray-100 relative selection:bg-cyan-500/30">
+      <AmbientBackground />
       <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: '' })} />
-      <div className="bg-white/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl w-[400px] border border-white">
-        <div className="flex justify-center mb-6">
-          <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-3 rounded-2xl shadow-lg shadow-blue-200">
-            <Sparkles className="text-white w-8 h-8" />
+      
+      <div className="bg-gray-900/50 backdrop-blur-2xl p-10 rounded-[2rem] shadow-[0_0_50px_-12px_rgba(56,189,248,0.15)] w-[400px] border border-white/5 relative z-10">
+        <div className="flex justify-center mb-8">
+          <div className="bg-gradient-to-tr from-cyan-500 to-indigo-500 p-4 rounded-2xl shadow-[0_0_30px_rgba(56,189,248,0.3)]">
+            <Zap className="text-white w-8 h-8" />
           </div>
         </div>
-        <h2 className="text-3xl font-extrabold text-center mb-8 text-gray-800 tracking-tight">
-          {isLogin ? "Welcome Back" : "Create Account"}
+        <h2 className="text-3xl font-extrabold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 tracking-tight">
+          {isLogin ? "Welcome Back" : "Initialize Agent"}
         </h2>
         
-        {error && <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 rounded mb-6 text-sm flex items-center gap-2"><AlertCircle size={16}/>{error}</div>}
+        {error && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-xl mb-6 text-sm flex items-center gap-3"><AlertCircle size={18}/>{error}</div>}
         
         <form onSubmit={handleAuth} className="space-y-5">
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Username</label>
-            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none" required minLength="3" />
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Username</label>
+            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full p-4 bg-gray-950/50 border border-gray-800 rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all outline-none text-white placeholder-gray-600 shadow-inner" required minLength="3" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none" required minLength="6" />
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Password</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 bg-gray-950/50 border border-gray-800 rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all outline-none text-white placeholder-gray-600 shadow-inner" required minLength="6" />
           </div>
           {!isLogin && (
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Role</label>
-              <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Role</label>
+              <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full p-4 bg-gray-950/50 border border-gray-800 rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all outline-none text-white shadow-inner appearance-none">
                 <option value="admin">Admin</option>
                 <option value="team">Team Member</option>
               </select>
             </div>
           )}
-          <button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 active:translate-y-0">
-            {isLogin ? "Sign In" : "Sign Up"}
+          <button type="submit" className="w-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white font-bold py-4 px-4 rounded-xl shadow-[0_0_20px_rgba(56,189,248,0.3)] hover:shadow-[0_0_30px_rgba(56,189,248,0.5)] transform hover:-translate-y-1 transition-all duration-200 mt-4 text-lg">
+            {isLogin ? "Access System" : "Create Profile"}
           </button>
         </form>
 
-        <div className="mt-8 flex items-center justify-between">
-          <hr className="w-full border-gray-200" />
-          <span className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-widest">OR</span>
-          <hr className="w-full border-gray-200" />
+        <div className="mt-8 flex items-center justify-between opacity-50">
+          <hr className="w-full border-gray-700" />
+          <span className="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">OR</span>
+          <hr className="w-full border-gray-700" />
         </div>
         
-        <div className="mt-6 flex justify-center transform hover:-translate-y-0.5 transition-all duration-200">
-          <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError("Google Login Failed")} shape="rectangular" theme="filled_blue" size="large" text="continue_with" />
+        <div className="mt-8 flex justify-center transform hover:-translate-y-0.5 transition-all duration-200">
+          <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError("Google Login Failed")} theme="filled_black" shape="pill" size="large" text="continue_with" />
         </div>
 
-        <div className="mt-8 text-center text-sm text-gray-500 font-medium">
+        <div className="mt-8 text-center text-sm text-gray-400 font-medium">
           {isLogin ? "Don't have an account? " : "Already have an account? "}
-          <button onClick={() => { setIsLogin(!isLogin); setError(''); }} type="button" className="text-indigo-600 font-bold hover:underline decoration-2 underline-offset-4">
+          <button onClick={() => { setIsLogin(!isLogin); setError(''); }} type="button" className="text-cyan-400 font-bold hover:text-cyan-300 transition-colors">
             {isLogin ? "Sign Up" : "Log In"}
           </button>
         </div>
@@ -288,48 +302,49 @@ function Dashboard() {
   const TabButton = ({ id, icon: Icon, label }) => (
     <button 
       onClick={() => setActiveTab(id)} 
-      className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm transition-all duration-200 ${activeTab === id ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-indigo-50 hover:text-indigo-600'}`}
+      className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all duration-300 ${activeTab === id ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_20px_rgba(34,211,238,0.15)]' : 'text-gray-500 border border-transparent hover:bg-gray-800/50 hover:text-gray-300 hover:border-gray-700/50'}`}
     >
-      <Icon size={18} /> {label}
+      <Icon size={18} className={activeTab === id ? 'text-cyan-400' : 'text-gray-500'} /> {label}
     </button>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-blue-50/50">
+    <div className="min-h-screen bg-[#0B0F19] text-gray-100 font-sans selection:bg-cyan-500/30">
+      <AmbientBackground />
       <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: '' })} />
       
       {/* Premium Glass Navbar */}
-      <nav className="bg-white/70 backdrop-blur-lg sticky top-0 z-40 border-b border-gray-200/50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2 rounded-xl shadow-md">
-              <Sparkles className="text-white w-6 h-6" />
+      <nav className="bg-gray-900/40 backdrop-blur-2xl sticky top-0 z-40 border-b border-gray-800 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
+        <div className="max-w-7xl mx-auto px-6 h-24 flex justify-between items-center relative z-10">
+          <div className="flex items-center gap-4">
+            <div className="bg-gradient-to-tr from-cyan-500 to-indigo-500 p-2.5 rounded-xl shadow-[0_0_20px_rgba(56,189,248,0.3)]">
+              <Zap className="text-white w-6 h-6" />
             </div>
-            <h1 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-800 to-indigo-800 tracking-tight">Bid Helper Agent</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">Bid Helper Agent</h1>
           </div>
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
-              <span className="text-sm font-medium text-gray-500">Hi, <strong className="text-gray-800">{username}</strong></span>
-              {role === 'admin' && <span className="bg-indigo-100 text-indigo-700 text-xs px-2.5 py-1 rounded-full font-bold tracking-wide uppercase">Admin</span>}
+            <div className="flex items-center gap-3 bg-gray-950/50 px-5 py-2.5 rounded-xl border border-gray-800 shadow-inner">
+              <span className="text-sm font-medium text-gray-400">Agent: <strong className="text-gray-100">{username}</strong></span>
+              {role === 'admin' && <span className="bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs px-2.5 py-1 rounded-lg font-bold tracking-widest uppercase">Admin</span>}
             </div>
-            <button onClick={handleLogout} className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-red-600 transition-colors">
-              <LogOut size={18} /> Logout
+            <button onClick={handleLogout} className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-red-400 transition-colors bg-gray-900/50 p-3 rounded-xl border border-gray-800 hover:border-red-500/30">
+              <LogOut size={18} />
             </button>
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-10">
+      <main className="max-w-7xl mx-auto px-6 py-12 relative z-10">
         
-        {/* Pill Tabs */}
-        <div className="flex space-x-2 mb-8 bg-white/50 p-1.5 rounded-full inline-flex border border-gray-200/50 shadow-sm backdrop-blur-sm">
-          <TabButton id="generate" icon={LayoutDashboard} label="Generate Bid" />
-          <TabButton id="history" icon={History} label="History" />
+        {/* Futuristic Tabs */}
+        <div className="flex space-x-3 mb-10 bg-gray-900/40 p-2 rounded-3xl inline-flex border border-gray-800 shadow-xl backdrop-blur-xl">
+          <TabButton id="generate" icon={LayoutDashboard} label="Generate Engine" />
+          <TabButton id="history" icon={History} label="Intelligence Logs" />
           {role === 'admin' && (
             <>
               <TabButton id="kb" icon={Database} label="Knowledge Base" />
-              <TabButton id="settings" icon={SettingsIcon} label="Settings" />
+              <TabButton id="settings" icon={SettingsIcon} label="System Rules" />
             </>
           )}
         </div>
@@ -339,19 +354,19 @@ function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[75vh]">
             
             {/* Left Column: Input */}
-            <div className="bg-white/80 backdrop-blur-md p-8 rounded-3xl shadow-xl shadow-indigo-100/50 border border-white flex flex-col h-full">
-              <h3 className="text-xl font-extrabold text-gray-800 mb-6 flex items-center gap-2">
-                <Send className="text-indigo-500" size={24}/> Lead Details
+            <div className="bg-gray-900/50 backdrop-blur-2xl p-8 rounded-[2rem] shadow-2xl border border-gray-700/50 flex flex-col h-full">
+              <h3 className="text-xl font-extrabold text-white mb-6 flex items-center gap-3">
+                <Send className="text-cyan-400" size={24}/> Target Specifications
               </h3>
               <textarea 
                 value={leadText} onChange={(e) => setLeadText(e.target.value)}
-                placeholder="Paste the Upwork/Freelancer job description here... Make it detailed!"
-                className="w-full flex-grow p-5 bg-gray-50/50 border border-gray-200 rounded-2xl mb-6 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none text-base outline-none transition-all shadow-inner"
+                placeholder="Paste the raw Upwork/Freelancer job description here..."
+                className="w-full flex-grow p-6 bg-gray-950/50 border border-gray-800 rounded-2xl mb-8 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 resize-none text-gray-200 outline-none transition-all shadow-inner placeholder-gray-600 leading-relaxed"
               />
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Category</label>
-                  <select value={projectCategory} onChange={(e) => setProjectCategory(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-gray-700">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 ml-1">Domain</label>
+                  <select value={projectCategory} onChange={(e) => setProjectCategory(e.target.value)} className="w-full p-4 bg-gray-950/50 border border-gray-800 rounded-xl focus:ring-2 focus:ring-cyan-500/50 outline-none font-medium text-gray-300 appearance-none shadow-inner">
                     <option>AI / Machine Learning</option>
                     <option>Python / Backend</option>
                     <option>Frontend / Web UI</option>
@@ -361,62 +376,70 @@ function Dashboard() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tone</label>
-                  <select value={tone} onChange={(e) => setTone(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-gray-700">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 ml-1">Vibe</label>
+                  <select value={tone} onChange={(e) => setTone(e.target.value)} className="w-full p-4 bg-gray-950/50 border border-gray-800 rounded-xl focus:ring-2 focus:ring-cyan-500/50 outline-none font-medium text-gray-300 appearance-none shadow-inner">
                     <option>Professional</option>
                     <option>Conversational</option>
                     <option>Aggressive/Confident</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Length</label>
-                  <select value={size} onChange={(e) => setSize(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-gray-700">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 ml-1">Output Size</label>
+                  <select value={size} onChange={(e) => setSize(e.target.value)} className="w-full p-4 bg-gray-950/50 border border-gray-800 rounded-xl focus:ring-2 focus:ring-cyan-500/50 outline-none font-medium text-gray-300 appearance-none shadow-inner">
                     <option>Short</option>
                     <option>Medium</option>
                     <option>Long & Detailed</option>
                   </select>
                 </div>
               </div>
-              <button onClick={handleGenerate} disabled={isGenerating} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 active:translate-y-0 disabled:opacity-70 disabled:hover:translate-y-0 flex justify-center items-center gap-3 text-lg">
-                {isGenerating ? <><Sparkles className="animate-spin" size={24}/> Generating Magic...</> : <><Sparkles size={24}/> Generate Custom Bid</>}
+              <button onClick={handleGenerate} disabled={isGenerating} className="w-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white font-bold py-5 px-6 rounded-2xl shadow-[0_0_20px_rgba(56,189,248,0.3)] hover:shadow-[0_0_40px_rgba(56,189,248,0.5)] transform hover:-translate-y-1 transition-all duration-300 active:translate-y-0 disabled:opacity-50 disabled:hover:translate-y-0 flex justify-center items-center gap-3 text-lg">
+                {isGenerating ? <><Sparkles className="animate-spin" size={24}/> Processing Neural Core...</> : <><Sparkles size={24}/> Initialize AI Generation</>}
               </button>
             </div>
 
             {/* Right Column: Output with Markdown */}
-            <div className="bg-white/80 backdrop-blur-md p-8 rounded-3xl shadow-xl shadow-indigo-100/50 border border-white flex flex-col h-full">
+            <div className="bg-gray-900/50 backdrop-blur-2xl p-8 rounded-[2rem] shadow-2xl border border-gray-700/50 flex flex-col h-full">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-extrabold text-gray-800">Generated Output</h3>
-                <div className="flex gap-2">
-                  <button onClick={handleCopy} disabled={!generatedBid} className="flex items-center gap-2 text-sm font-bold bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600 px-4 py-2 rounded-xl disabled:opacity-50 transition-all shadow-sm"><Copy size={16}/> Copy</button>
-                  <button onClick={handleDownload} disabled={!generatedBid} className="flex items-center gap-2 text-sm font-bold bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600 px-4 py-2 rounded-xl disabled:opacity-50 transition-all shadow-sm"><Download size={16}/> Save .txt</button>
+                <h3 className="text-xl font-extrabold text-white flex items-center gap-2"><CheckCircle2 className="text-emerald-400" size={24}/> Output Matrix</h3>
+                <div className="flex gap-3">
+                  <button onClick={handleCopy} disabled={!generatedBid} className="flex items-center gap-2 text-sm font-bold bg-gray-950/50 border border-gray-800 hover:bg-gray-800 hover:border-gray-600 text-gray-300 px-5 py-2.5 rounded-xl disabled:opacity-30 transition-all shadow-inner"><Copy size={16}/> Copy</button>
+                  <button onClick={handleDownload} disabled={!generatedBid} className="flex items-center gap-2 text-sm font-bold bg-gray-950/50 border border-gray-800 hover:bg-gray-800 hover:border-gray-600 text-gray-300 px-5 py-2.5 rounded-xl disabled:opacity-30 transition-all shadow-inner"><Download size={16}/> .txt</button>
                 </div>
               </div>
 
               {generatedBid ? (
-                /* Feature 5: MARKDOWN RENDERER ENABLED HERE */
-                <div className="w-full flex-grow p-6 bg-gray-50/50 border border-gray-200 rounded-2xl overflow-y-auto shadow-inner [&>h1]:text-2xl [&>h1]:font-extrabold [&>h1]:mb-4 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-3 [&>h3]:text-lg [&>h3]:font-bold [&>h3]:mb-2 [&>p]:mb-4 [&>p]:leading-relaxed [&>ul]:list-disc [&>ul]:pl-6 [&>ul]:mb-4 [&>ul>li]:mb-1 [&>ol]:list-decimal [&>ol]:pl-6 [&>ol]:mb-4 [&>strong]:font-bold [&>strong]:text-indigo-900">
+                /* MARKDOWN RENDERER - DARK MODE OPTIMIZED */
+                <div className="w-full flex-grow p-8 bg-gray-950/50 border border-gray-800 rounded-2xl overflow-y-auto shadow-inner 
+                [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full 
+                [&>h1]:text-2xl [&>h1]:font-extrabold [&>h1]:mb-4 [&>h1]:text-white [&>h1]:tracking-tight
+                [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-3 [&>h2]:text-gray-100 
+                [&>h3]:text-lg [&>h3]:font-bold [&>h3]:mb-2 [&>h3]:text-gray-200 
+                [&>p]:mb-5 [&>p]:leading-relaxed [&>p]:text-gray-300 [&>p]:text-base
+                [&>ul]:list-disc [&>ul]:pl-6 [&>ul]:mb-5 [&>ul>li]:text-gray-300 [&>ul>li]:mb-2 
+                [&>ol]:list-decimal [&>ol]:pl-6 [&>ol]:mb-5 [&>ol>li]:text-gray-300 [&>ol>li]:mb-2
+                [&>strong]:font-extrabold [&>strong]:text-cyan-400">
                   <ReactMarkdown>{generatedBid}</ReactMarkdown>
                 </div>
               ) : (
-                <div className="w-full flex-grow border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-gray-400 bg-gray-50/50 gap-4">
-                  <Sparkles size={48} className="text-gray-300 opacity-50" />
-                  <span className="font-medium">Your AI-formatted bid will appear here.</span>
+                <div className="w-full flex-grow border-2 border-dashed border-gray-800 rounded-2xl flex flex-col items-center justify-center text-gray-600 bg-gray-950/30 gap-5 shadow-inner">
+                  <Sparkles size={56} className="text-gray-700 opacity-50" />
+                  <span className="font-semibold text-lg tracking-wide">Awaiting instructions...</span>
                 </div>
               )}
 
               {generatedBid && (
-                <div className="mt-6 space-y-4">
+                <div className="mt-8 space-y-5">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">AI Revisions</span>
-                    {isRevising && <span className="text-xs text-indigo-600 animate-pulse font-bold flex items-center gap-1"><Sparkles size={12}/> AI is rewriting...</span>}
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">AI Post-Processing</span>
+                    {isRevising && <span className="text-xs text-cyan-400 animate-pulse font-bold flex items-center gap-2"><Zap size={14}/> Rewriting Vectors...</span>}
                   </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <button onClick={() => handleAiRevise("Make this much shorter and more concise.")} disabled={isRevising} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-bold py-2.5 px-4 rounded-xl border border-indigo-100 disabled:opacity-50 transition-all flex items-center gap-2"><Sparkles size={16}/> Make Shorter</button>
-                    <button onClick={() => handleAiRevise("Make the tone more aggressive, confident, and persuasive.")} disabled={isRevising} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-bold py-2.5 px-4 rounded-xl border border-indigo-100 disabled:opacity-50 transition-all flex items-center gap-2"><Sparkles size={16}/> Make Aggressive</button>
-                    <button onClick={() => handleAiRevise("Fix any grammar mistakes and polish the language to be perfectly professional.")} disabled={isRevising} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-bold py-2.5 px-4 rounded-xl border border-indigo-100 disabled:opacity-50 transition-all flex items-center gap-2"><Sparkles size={16}/> Fix Grammar</button>
+                  <div className="flex gap-3 flex-wrap">
+                    <button onClick={() => handleAiRevise("Make this much shorter and more concise.")} disabled={isRevising} className="bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-sm font-bold py-3 px-5 rounded-xl border border-indigo-500/30 disabled:opacity-30 transition-all flex items-center gap-2 shadow-inner"><Sparkles size={16}/> Compact</button>
+                    <button onClick={() => handleAiRevise("Make the tone more aggressive, confident, and persuasive.")} disabled={isRevising} className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-sm font-bold py-3 px-5 rounded-xl border border-purple-500/30 disabled:opacity-30 transition-all flex items-center gap-2 shadow-inner"><Sparkles size={16}/> Aggressive</button>
+                    <button onClick={() => handleAiRevise("Fix any grammar mistakes and polish the language to be perfectly professional.")} disabled={isRevising} className="bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-sm font-bold py-3 px-5 rounded-xl border border-cyan-500/30 disabled:opacity-30 transition-all flex items-center gap-2 shadow-inner"><Sparkles size={16}/> Polish Grammar</button>
                   </div>
-                  <button onClick={handleSaveRevision} disabled={isSavingRevision} className="w-full bg-green-50 text-green-700 border border-green-200 font-bold py-3 px-4 rounded-xl hover:bg-green-100 hover:border-green-300 disabled:opacity-50 transition-all flex justify-center items-center gap-2 mt-2 shadow-sm">
-                     <Save size={18}/> {isSavingRevision ? "Saving..." : "Save Edit to History"}
+                  <button onClick={handleSaveRevision} disabled={isSavingRevision} className="w-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold py-4 px-4 rounded-xl hover:bg-emerald-500/20 disabled:opacity-50 transition-all flex justify-center items-center gap-3 mt-4 shadow-inner text-lg tracking-wide">
+                     <Save size={20}/> {isSavingRevision ? "Committing to Logs..." : "Save Configuration to Logs"}
                   </button>
                 </div>
               )}
@@ -426,35 +449,36 @@ function Dashboard() {
 
         {/* --- TAB: HISTORY --- */}
         {activeTab === 'history' && (
-          <div className="bg-white/80 backdrop-blur-md p-8 rounded-3xl shadow-xl border border-white">
-            <h3 className="text-2xl font-extrabold mb-8 text-gray-800 flex items-center gap-3"><History className="text-indigo-500"/> Your Past Generated Bids</h3>
+          <div className="bg-gray-900/50 backdrop-blur-2xl p-10 rounded-[2rem] shadow-2xl border border-gray-700/50">
+            <h3 className="text-2xl font-extrabold mb-10 text-white flex items-center gap-3"><History className="text-cyan-400 w-8 h-8"/> Intelligence Logs</h3>
             {isLoadingHistory ? (
-              <div className="flex justify-center py-10"><Sparkles className="animate-spin text-indigo-500" size={32}/></div>
+              <div className="flex justify-center py-20"><Zap className="animate-pulse text-cyan-500" size={40}/></div>
             ) : historyBids.length === 0 ? (
-              <div className="text-center py-16 text-gray-400 font-medium">No bids generated yet. Time to win some projects!</div>
+              <div className="text-center py-24 text-gray-500 font-medium text-lg">No tactical data found. Initialize the generate engine to begin.</div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {historyBids.map((bid) => {
                   const latestRevision = bid.revisions && bid.revisions.length > 0 ? bid.revisions[bid.revisions.length - 1] : null;
                   return (
-                    <div key={bid._id} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex gap-2 flex-wrap">
-                          <span className="bg-blue-50 text-blue-700 text-xs font-bold px-3 py-1 rounded-full border border-blue-100">{bid.tone}</span>
-                          <span className="bg-purple-50 text-purple-700 text-xs font-bold px-3 py-1 rounded-full border border-purple-100">{bid.size}</span>
-                          <span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full border border-indigo-100">{bid.project_category || 'General'}</span>
+                    <div key={bid._id} className="bg-gray-950/50 border border-gray-800 rounded-3xl p-8 shadow-inner hover:border-cyan-500/50 transition-colors">
+                      <div className="flex justify-between items-start mb-6">
+                        <div className="flex gap-3 flex-wrap">
+                          <span className="bg-indigo-500/10 text-indigo-300 text-xs font-bold px-4 py-1.5 rounded-full border border-indigo-500/20">{bid.tone}</span>
+                          <span className="bg-purple-500/10 text-purple-300 text-xs font-bold px-4 py-1.5 rounded-full border border-purple-500/20">{bid.size}</span>
+                          <span className="bg-cyan-500/10 text-cyan-300 text-xs font-bold px-4 py-1.5 rounded-full border border-cyan-500/20">{bid.project_category || 'General'}</span>
                         </div>
-                        <span className="text-xs font-semibold text-gray-400 bg-gray-50 px-3 py-1 rounded-full">{new Date(bid.created_at).toLocaleString()}</span>
+                        <span className="text-xs font-bold text-gray-500 tracking-widest">{new Date(bid.created_at).toLocaleString()}</span>
                       </div>
-                      <div className="mb-4">
-                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Original Lead</h4>
-                        <p className="text-sm text-gray-600 bg-gray-50 border border-gray-100 p-4 rounded-xl line-clamp-2">"{bid.lead_text}"</p>
+                      <div className="mb-6">
+                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 ml-1">Target Description</h4>
+                        <p className="text-sm text-gray-400 bg-gray-900/50 border border-gray-800 p-5 rounded-2xl line-clamp-3 leading-relaxed">"{bid.lead_text}"</p>
                       </div>
                       {latestRevision && (
                         <div>
-                          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-2">Final Bid Output <CheckCircle2 size={14} className="text-green-500"/></h4>
-                          {/* MARKDOWN IN HISTORY TOO! */}
-                          <div className="w-full text-sm text-gray-800 bg-white border border-gray-100 rounded-xl p-5 h-48 overflow-y-auto prose prose-sm max-w-none shadow-inner [&>h3]:font-bold [&>h3]:text-base [&>ul]:list-disc [&>ul]:pl-5 [&>strong]:text-indigo-900">
+                          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 ml-1 flex items-center gap-2">Final Output <CheckCircle2 size={14} className="text-emerald-500"/></h4>
+                          <div className="w-full text-base text-gray-300 bg-gray-900/50 border border-gray-800 rounded-2xl p-6 h-64 overflow-y-auto shadow-inner 
+                          [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full 
+                          [&>h3]:font-bold [&>h3]:text-lg [&>h3]:text-white [&>ul]:list-disc [&>ul]:pl-5 [&>strong]:text-cyan-400 [&>p]:mb-3">
                              <ReactMarkdown>{latestRevision.content}</ReactMarkdown>
                           </div>
                         </div>
@@ -469,41 +493,41 @@ function Dashboard() {
 
         {/* --- TAB: KNOWLEDGE BASE (ADMIN) --- */}
         {activeTab === 'kb' && role === 'admin' && (
-          <div className="bg-white/80 backdrop-blur-md p-8 rounded-3xl shadow-xl border border-white max-w-2xl mx-auto">
-            <div className="flex items-center gap-3 mb-4"><Database className="text-indigo-500 w-8 h-8"/><h3 className="text-2xl font-extrabold text-gray-800">Knowledge Base Training</h3></div>
-            <p className="text-gray-500 text-sm font-medium mb-8 leading-relaxed">Upload a CSV containing your company's past successful projects. This data is securely converted into a Vector Database to teach the AI how your company solves problems.</p>
+          <div className="bg-gray-900/50 backdrop-blur-2xl p-10 rounded-[2rem] shadow-2xl border border-gray-700/50 max-w-2xl mx-auto">
+            <div className="flex items-center gap-4 mb-6"><Database className="text-cyan-400 w-10 h-10"/><h3 className="text-3xl font-extrabold text-white tracking-tight">Data Matrix</h3></div>
+            <p className="text-gray-400 text-base font-medium mb-10 leading-relaxed">Upload a CSV containing your company's past successful projects. This data is securely converted into a Vector Database to teach the neural network how your company operates.</p>
             
-            <div className="border-2 border-dashed border-indigo-200 rounded-2xl p-10 text-center bg-indigo-50/30 mb-6 hover:bg-indigo-50/50 transition-colors">
-              <Database className="mx-auto text-indigo-300 mb-4 w-12 h-12" />
-              <input type="file" accept=".csv" onChange={(e) => setFile(e.target.files[0])} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer transition-colors" />
+            <div className="border-2 border-dashed border-gray-700 rounded-3xl p-12 text-center bg-gray-950/50 mb-8 hover:border-cyan-500/50 hover:bg-gray-900/80 transition-all group">
+              <Database className="mx-auto text-gray-600 group-hover:text-cyan-500/50 mb-6 w-16 h-16 transition-colors" />
+              <input type="file" accept=".csv" onChange={(e) => setFile(e.target.files[0])} className="block w-full text-sm text-gray-400 file:mr-6 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-cyan-500/10 file:text-cyan-400 file:border file:border-cyan-500/30 hover:file:bg-cyan-500/20 cursor-pointer transition-all" />
             </div>
             
-            <button onClick={handleUpload} disabled={!file || isUploading} className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl disabled:opacity-50 transition-all flex justify-center items-center gap-3 text-lg">
-              {isUploading ? <><Sparkles className="animate-spin"/> Processing Vectors...</> : <><Database/> Upload & Train AI Vector DB</>}
+            <button onClick={handleUpload} disabled={!file || isUploading} className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold py-5 px-6 rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] disabled:opacity-50 transition-all flex justify-center items-center gap-3 text-lg">
+              {isUploading ? <><Sparkles className="animate-spin"/> Initializing Vectors...</> : <><Database/> Train Neural Network</>}
             </button>
           </div>
         )}
 
         {/* --- TAB: SETTINGS (ADMIN) --- */}
         {activeTab === 'settings' && role === 'admin' && (
-          <div className="bg-white/80 backdrop-blur-md p-8 rounded-3xl shadow-xl border border-white max-w-2xl mx-auto">
-             <div className="flex items-center gap-3 mb-8"><SettingsIcon className="text-indigo-500 w-8 h-8"/><h3 className="text-2xl font-extrabold text-gray-800">Global AI Rules</h3></div>
+          <div className="bg-gray-900/50 backdrop-blur-2xl p-10 rounded-[2rem] shadow-2xl border border-gray-700/50 max-w-2xl mx-auto">
+             <div className="flex items-center gap-4 mb-10"><SettingsIcon className="text-cyan-400 w-10 h-10"/><h3 className="text-3xl font-extrabold text-white tracking-tight">System Protocols</h3></div>
             
-            <div className="space-y-8">
+            <div className="space-y-10">
               <div>
-                <label className="block text-sm font-extrabold text-gray-700 mb-2">Banned Phrases (Clichés)</label>
-                <textarea value={settings.banned_phrases} onChange={(e) => setSettings({...settings, banned_phrases: e.target.value})} placeholder="e.g., hope this finds you well, delve, synergy, robust" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm shadow-inner resize-none" rows="3" />
-                <p className="text-xs text-gray-500 mt-2 font-medium flex items-center gap-1"><AlertCircle size={12}/> The AI will be strictly blocked from using these words.</p>
+                <label className="block text-sm font-extrabold text-gray-300 mb-3 tracking-wide">Banned Lexicon (Clichés)</label>
+                <textarea value={settings.banned_phrases} onChange={(e) => setSettings({...settings, banned_phrases: e.target.value})} placeholder="e.g., hope this finds you well, delve, synergy, robust" className="w-full p-5 bg-gray-950/50 border border-gray-800 rounded-2xl focus:ring-2 focus:ring-cyan-500/50 outline-none text-gray-200 shadow-inner resize-none placeholder-gray-600" rows="3" />
+                <p className="text-xs text-red-400/80 mt-3 font-bold flex items-center gap-2 uppercase tracking-wider"><AlertCircle size={14}/> Neural net strictly blocked from these tokens.</p>
               </div>
 
               <div>
-                <label className="block text-sm font-extrabold text-gray-700 mb-2">Confidential Keywords (Alerts)</label>
-                <textarea value={settings.confidential_keywords} onChange={(e) => setSettings({...settings, confidential_keywords: e.target.value})} placeholder="e.g., internal budget, stealth, confidential" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm shadow-inner resize-none" rows="3" />
-                <p className="text-xs text-gray-500 mt-2 font-medium flex items-center gap-1"><AlertCircle size={12}/> Future feature: Warns users if they paste these words.</p>
+                <label className="block text-sm font-extrabold text-gray-300 mb-3 tracking-wide">Restricted Entities (Alerts)</label>
+                <textarea value={settings.confidential_keywords} onChange={(e) => setSettings({...settings, confidential_keywords: e.target.value})} placeholder="e.g., internal budget, stealth, confidential" className="w-full p-5 bg-gray-950/50 border border-gray-800 rounded-2xl focus:ring-2 focus:ring-cyan-500/50 outline-none text-gray-200 shadow-inner resize-none placeholder-gray-600" rows="3" />
+                <p className="text-xs text-gray-500 mt-3 font-bold flex items-center gap-2 uppercase tracking-wider"><AlertCircle size={14}/> Triggers warning if pasted in input.</p>
               </div>
 
-              <button onClick={handleSaveSettings} disabled={isSavingSettings} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl disabled:opacity-50 transition-all flex justify-center items-center gap-2 text-lg">
-                <Save/> {isSavingSettings ? "Saving..." : "Save Global Settings"}
+              <button onClick={handleSaveSettings} disabled={isSavingSettings} className="w-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white font-bold py-5 px-6 rounded-2xl shadow-[0_0_20px_rgba(56,189,248,0.3)] hover:shadow-[0_0_40px_rgba(56,189,248,0.5)] disabled:opacity-50 transition-all flex justify-center items-center gap-3 text-lg">
+                <Save/> {isSavingSettings ? "Saving..." : "Lock Protocols"}
               </button>
             </div>
           </div>
