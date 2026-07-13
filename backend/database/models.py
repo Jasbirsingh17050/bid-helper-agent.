@@ -48,8 +48,8 @@ class GenerationRecord(BaseModel):
     project_category: str = "General / Other"
     revisions: List[Revision] = []
     retrieved_kb_ids: List[str] = []
-    supporting_files_used: List[str] = [] # Names only, per ephemeral rule
-    outcome_tag: Optional[str] = None # "Won", "Lost", or None
+    supporting_files_used: List[str] = [] 
+    outcome_tag: Optional[str] = None 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     class Config:
@@ -59,7 +59,7 @@ class GenerationRecord(BaseModel):
 # 4. ADMIN SETTINGS (For 'settings' collection)
 # ---------------------------------------------------------
 class AppSettings(BaseModel):
-    active_llm_provider: str = Field(default="openai") # "openai", "gemini", "anthropic"
+    active_llm_provider: str = Field(default="openai")
     daily_generation_limit_per_user: int = Field(default=50)
     banned_phrases: List[str] = [
         "hope this finds you well", "delve", "robust", "seamless"

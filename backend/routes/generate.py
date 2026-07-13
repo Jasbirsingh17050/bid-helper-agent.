@@ -8,11 +8,10 @@ from routes.auth import get_current_user
 import os
 from groq import AsyncGroq
 from datetime import datetime, timezone
-from duckduckgo_search import DDGS  # NEW: Web Search Library
+from duckduckgo_search import DDGS  
 
 router = APIRouter(prefix="/generate", tags=["AI Generation"])
 
-# Initialize Groq Client
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 groq_client = AsyncGroq(api_key=GROQ_API_KEY)
 
@@ -21,6 +20,7 @@ class BidRequest(BaseModel):
     tone: str = "Professional"
     size: str = "Medium"
     project_category: str = "General / Other"
+    word_count_target: Optional[str] = ""
 
 class ReviseRequest(BaseModel):
     generation_id: str
@@ -28,13 +28,11 @@ class ReviseRequest(BaseModel):
     instruction: str
 
 def perform_web_search(query: str, max_results=2):
-    """Searches the live internet for context to help the AI."""
     try:
         with DDGS() as ddgs:
             results = list(ddgs.text(query, max_results=max_results))
             if not results:
                 return "No specific live web context found."
-            
             search_context = "Live Internet Research:\n"
             for res in results:
                 search_context += f"- {res['title']}: {res['body']}\n"
@@ -45,7 +43,6 @@ def perform_web_search(query: str, max_results=2):
 @router.post("/bid")
 async def generate_bid(request: BidRequest, current_user: dict = Depends(get_current_user)):
     try:
-        # 1. Search Qdrant for matching past projects
         search_results = await search_projects(request.lead_text, limit=2)
         
         kb_context = ""
@@ -57,7 +54,6 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
         if not kb_context.strip():
             kb_context = "No specific past projects found for this domain. Rely on general expertise."
 
-        # 2. Fetch Admin Settings to enforce Banned Phrases
         settings_doc = await settings_collection.find_one({})
         banned_phrases_instruction = ""
         if settings_doc:
@@ -65,36 +61,41 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             if banned_phrases:
                 banned_phrases_instruction = f"\n\nCRITICAL INSTRUCTION: You MUST NOT use any of the following cliché phrases in your response: {', '.join(banned_phrases)}."
 
-        # 3. Perform Live Web Search
         search_query = request.lead_text[:60].replace('\n', ' ')
         web_context = perform_web_search(search_query)
 
-        # 4. Enforce Strict Size and Structure Rules
+        # -------------------------------------------------------------
+        # HARSH STRICT WORD COUNT ENFORCEMENT
+        # -------------------------------------------------------------
         size_prompt = ""
-        if request.size == "Short":
+        if request.word_count_target and request.word_count_target.strip():
+            size_prompt = f"SIZE REQUIREMENT: The user has strictly requested an exact length of around {request.word_count_target} words. Prioritize this over all other size rules."
+        elif request.size == "Short":
             size_prompt = (
-                "SIZE REQUIREMENT: Small / Short Bid (100 - 300 Words STRICT). "
-                "Target Scope: Simple, transactional proposals. Ideal Length: Under 1.5 minutes read time. "
-                "Core Structure: 1. Direct hook showing you read the requirements. 2. Brief statement of your immediate technical solution. 3. A single call-to-action (e.g., 'Let's hop on a 5-minute call')."
+                "SIZE REQUIREMENT: Small / Short Bid (STRICTLY 100 - 200 Words MAX).\n"
+                "CRITICAL: Do NOT exceed 200 words. Cut out all fluff.\n"
+                "Target Scope: Simple, transactional proposals. Ideal Length: Under 1.5 minutes read time.\n"
+                "Core Structure: 1. Direct hook showing you read the requirements. 2. Brief statement of your immediate technical solution. 3. A single call-to-action."
             )
         elif request.size == "Medium":
             size_prompt = (
-                "SIZE REQUIREMENT: Medium Bid (400 - 800 Words STRICT). "
-                "Target Scope: Standard milestones or fixed-price projects. Ideal Length: Around 2 to 4 minutes read time. "
-                "Core Structure: 1. Executive summary of current pain points. 2. Defined phase breakdowns (e.g., Week 1 Discovery, Week 2 Build). 3. Explicit timeline, milestones, and high-level risk mitigations."
+                "SIZE REQUIREMENT: Medium Bid (STRICTLY 200 - 320 Words MAX).\n"
+                "CRITICAL: Do NOT exceed 320 words under any circumstance.\n"
+                "Target Scope: Standard milestones or fixed-price redesigns.\n"
+                "Core Structure: 1. Executive summary of current pain points. 2. Defined phase breakdowns. 3. Explicit timeline, milestones, and high-level risk mitigations."
             )
         else:
             size_prompt = (
-                "SIZE REQUIREMENT: Large Bid (1,200 - 3,000+ Words STRICT). "
-                "Target Scope: Enterprise RFPs, corporate service contracts. Ideal Length: Detailed formal reading. "
-                "Core Structure: 1. Rigorous technical architecture layout. 2. Team qualifications/case studies. 3. Legal terms, strict SLAs, and change-management protocols."
+                "SIZE REQUIREMENT: Large Bid (STRICTLY 320 - 550 Words MAX).\n"
+                "CRITICAL: Keep this strictly between 320 and 550 words.\n"
+                "Target Scope: Enterprise RFPs, corporate service contracts.\n"
+                "Core Structure: 1. Rigorous technical architecture layout. 2. Team qualifications/case studies. 3. Legal terms, SLAs, and change-management protocols."
             )
 
-        # 5. Create the System Prompt
         system_prompt = (
             f"You are an expert sales engineer and proposal writer specializing in {request.project_category} projects. "
             "Write a highly convincing, professional bid for the following job lead.\n\n"
-            f"Please write it in a '{request.tone}' tone, and perfectly follow this size constraint:\n"
+            f"Please write it in a '{request.tone}' tone.\n\n"
             f"{size_prompt}\n\n"
             f"Tailor your language, technologies, and approach specifically for a {request.project_category} project.\n\n"
             "Here is live internet research regarding the client/topic to make your bid more specific and impressive:\n"
@@ -106,7 +107,6 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             f"{banned_phrases_instruction}"
         )
 
-        # 6. Call Groq API
         chat_completion = await groq_client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -119,7 +119,6 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
         
         generated_text = chat_completion.choices[0].message.content
 
-        # 6. Save the generation to MongoDB History
         generation_doc = GenerationRecord(
             user_id=str(current_user["_id"]),
             lead_text=request.lead_text,
@@ -130,7 +129,6 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             retrieved_kb_ids=retrieved_ids
         )
         
-        # Drop the empty default ID so MongoDB auto-generates a unique one
         doc_dict = generation_doc.model_dump(by_alias=True)
         if doc_dict.get("_id") == "":
             del doc_dict["_id"]
@@ -145,7 +143,6 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
 
-
 @router.post("/ai-revise")
 async def ai_revise_bid(request: ReviseRequest, current_user: dict = Depends(get_current_user)):
     try:
@@ -153,7 +150,6 @@ async def ai_revise_bid(request: ReviseRequest, current_user: dict = Depends(get
             "You are an expert editor. You will be given a current sales bid and an instruction on how to change it. "
             "Output ONLY the newly revised bid text. Do not include introductory text like 'Here is the revised bid'."
         )
-        
         user_prompt = f"CURRENT BID:\n{request.current_content}\n\nINSTRUCTION: {request.instruction}\n\nREVISED BID:"
 
         chat_completion = await groq_client.chat.completions.create(
@@ -167,13 +163,11 @@ async def ai_revise_bid(request: ReviseRequest, current_user: dict = Depends(get
         )
         
         revised_text = chat_completion.choices[0].message.content
-
         from bson import ObjectId
         await generations_collection.update_one(
             {"_id": ObjectId(request.generation_id)},
             {"$push": {"revisions": {"content": revised_text, "action_type": "ai_revise", "timestamp": datetime.now(timezone.utc)}}}
         )
-
         return {"content": revised_text}
 
     except Exception as e:
