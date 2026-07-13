@@ -195,3 +195,41 @@ async def google_login(google_data: GoogleToken):
         
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid Google token.")
+
+# ---------------------------------------------------------
+# NEW: ADMIN USER MANAGEMENT ENDPOINTS
+# ---------------------------------------------------------
+class UserStatusUpdate(BaseModel):
+    is_active: bool
+
+@router.get("/users")
+async def get_all_users(current_admin: dict = Depends(get_current_admin)):
+    cursor = users_collection.find({})
+    users = await cursor.to_list(length=1000)
+    
+    sanitized_users = []
+    for u in users:
+        sanitized_users.append({
+            "id": str(u["_id"]),
+            "username": u["username"],
+            "role": u["role"],
+            "is_active": u.get("is_active", True),
+            "created_at": u.get("created_at")
+        })
+    return {"users": sanitized_users}
+
+@router.put("/users/{username}/status")
+async def update_user_status(username: str, status_data: UserStatusUpdate, current_admin: dict = Depends(get_current_admin)):
+    # Security Check: Prevent an admin from locking themselves out!
+    if username == current_admin["username"]:
+        raise HTTPException(status_code=400, detail="You cannot deactivate your own admin account.")
+
+    result = await users_collection.update_one(
+        {"username": username},
+        {"$set": {"is_active": status_data.is_active}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found.")
+        
+    return {"message": f"User {username} status updated successfully."}

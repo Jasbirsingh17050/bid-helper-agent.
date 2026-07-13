@@ -262,7 +262,7 @@ function Dashboard() {
         <div className="flex space-x-3 mb-10 bg-gray-900/40 p-2 rounded-3xl inline-flex border border-gray-800 shadow-xl backdrop-blur-xl">
           <TabButton id="generate" icon={LayoutDashboard} label="Generate Engine" />
           <TabButton id="history" icon={History} label="Intelligence Logs" />
-          {role === 'admin' && (<><TabButton id="kb" icon={Database} label="Knowledge Base" /><TabButton id="settings" icon={SettingsIcon} label="System Rules" /></>)}
+          {role === 'admin' && (<><TabButton id="users" icon={Users} label="Team Access" /><TabButton id="kb" icon={Database} label="Knowledge Base" /><TabButton id="settings" icon={SettingsIcon} label="System Rules" /></>)}
         </div>
 
         {activeTab === 'generate' && (
@@ -428,6 +428,54 @@ function Dashboard() {
                 <Save/> {isSavingSettings ? "Saving..." : "Lock Protocols"}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* --- TAB: USER MANAGEMENT (ADMIN) --- */}
+        {activeTab === 'users' && role === 'admin' && (
+          <div className="bg-gray-900/50 backdrop-blur-2xl p-10 rounded-[2rem] shadow-2xl border border-gray-700/50 max-w-4xl mx-auto">
+             <div className="flex items-center gap-4 mb-10"><Users className="text-cyan-400 w-10 h-10"/><h3 className="text-3xl font-extrabold text-white tracking-tight">Team Access Matrix</h3></div>
+             {isLoadingUsers ? (
+               <div className="flex justify-center py-20"><Zap className="animate-pulse text-cyan-500" size={40}/></div>
+             ) : (
+               <div className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-950/30">
+                  <table className="w-full text-left text-sm text-gray-400">
+                     <thead className="bg-gray-900/80 text-xs uppercase text-gray-500 border-b border-gray-800 font-extrabold tracking-widest">
+                        <tr>
+                           <th className="px-6 py-5">Username</th>
+                           <th className="px-6 py-5">Role</th>
+                           <th className="px-6 py-5">Join Date</th>
+                           <th className="px-6 py-5 text-center">System Access</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-800 font-medium">
+                        {usersList.map((u) => (
+                           <tr key={u.id} className="hover:bg-gray-900/30 transition-colors">
+                              <td className="px-6 py-5 text-gray-200">{u.username}</td>
+                              <td className="px-6 py-5">
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${u.role === 'admin' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30'}`}>
+                                  {u.role.toUpperCase()}
+                                </span>
+                              </td>
+                              <td className="px-6 py-5">{new Date(u.created_at).toLocaleDateString()}</td>
+                              <td className="px-6 py-5 text-center">
+                                {u.username === username ? (
+                                  <span className="text-xs text-gray-600 font-bold uppercase">Current User</span>
+                                ) : (
+                                  <button 
+                                    onClick={() => handleToggleUserStatus(u.username, u.is_active)}
+                                    className={`click-flash active:scale-95 flex items-center justify-center gap-2 mx-auto px-4 py-2 rounded-xl text-xs font-bold transition-all border ${u.is_active ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20'}`}
+                                  >
+                                    {u.is_active ? <><UserCheck size={16}/> Active</> : <><UserX size={16}/> Locked Out</>}
+                                  </button>
+                                )}
+                              </td>
+                           </tr>
+                        ))}
+                     </tbody>
+                  </table>
+               </div>
+             )}
           </div>
         )}
 
