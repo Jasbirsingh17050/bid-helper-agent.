@@ -45,6 +45,7 @@ class GenerationRecord(BaseModel):
     lead_text: str
     tone: str
     size: str
+    project_category: str = "General / Other"
     revisions: List[Revision] = []
     retrieved_kb_ids: List[str] = []
     supporting_files_used: List[str] = [] # Names only, per ephemeral rule

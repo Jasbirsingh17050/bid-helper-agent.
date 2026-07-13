@@ -20,6 +20,7 @@ class BidRequest(BaseModel):
     lead_text: str
     tone: str = "Professional"
     size: str = "Medium"
+    project_category: str = "General / Other"
 
 class ReviseRequest(BaseModel):
     generation_id: str
@@ -64,16 +65,16 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             if banned_phrases:
                 banned_phrases_instruction = f"\n\nCRITICAL INSTRUCTION: You MUST NOT use any of the following cliché phrases in your response: {', '.join(banned_phrases)}."
 
-        # 3. Perform Live Web Search (NEW PATH C FEATURE)
-        # We search using the first 60 characters of the lead (usually the company name or project title)
+        # 3. Perform Live Web Search
         search_query = request.lead_text[:60].replace('\n', ' ')
         web_context = perform_web_search(search_query)
 
         # 4. Create the System Prompt
         system_prompt = (
-            "You are an expert sales engineer and proposal writer. "
+            f"You are an expert sales engineer and proposal writer specializing in {request.project_category} projects. "
             "Write a highly convincing, professional bid for the following job lead.\n\n"
-            f"Please write it in a '{request.tone}' tone, and keep the length '{request.size}'.\n\n"
+            f"Please write it in a '{request.tone}' tone, keep the length '{request.size}', "
+            f"and tailor your language, technologies, and approach specifically for a {request.project_category} project.\n\n"
             "Here is live internet research regarding the client/topic to make your bid more specific and impressive:\n"
             f"{web_context}\n\n"
             "Use the following successful past projects from our company as evidence of our expertise. "
@@ -83,7 +84,7 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             f"{banned_phrases_instruction}"
         )
 
-        # 5. Call Groq API (Using the supported model)
+        # 5. Call Groq API
         chat_completion = await groq_client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -102,11 +103,12 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             lead_text=request.lead_text,
             tone=request.tone,
             size=request.size,
+            project_category=request.project_category,
             revisions=[Revision(content=generated_text, action_type="original")],
             retrieved_kb_ids=retrieved_ids
         )
         
-        # FIX: Drop the empty default ID so MongoDB auto-generates a unique one
+        # Drop the empty default ID so MongoDB auto-generates a unique one
         doc_dict = generation_doc.model_dump(by_alias=True)
         if doc_dict.get("_id") == "":
             del doc_dict["_id"]
