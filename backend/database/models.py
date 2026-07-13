@@ -46,6 +46,7 @@ class GenerationRecord(BaseModel):
     tone: str
     size: str
     project_category: str = "General / Other"
+    target_audience: str = "General Manager / CEO"
     revisions: List[Revision] = []
     retrieved_kb_ids: List[str] = []
     supporting_files_used: List[str] = [] 

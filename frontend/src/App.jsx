@@ -221,6 +221,7 @@ function Dashboard() {
   const [size, setSize] = useState('Medium');
   const [customWords, setCustomWords] = useState('');
   const [projectCategory, setProjectCategory] = useState('General / Other');
+  const [targetAudience, setTargetAudience] = useState('General Manager / CEO');
   const [generatedBid, setGeneratedBid] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [confidenceScore, setConfidenceScore] = useState(null);
@@ -253,7 +254,7 @@ function Dashboard() {
     setIsGenerating(true); setGeneratedBid(''); setCurrentGenerationId(null); setConfidenceScore(null);
     try {
       const response = await axios.post('https://bid-helper-agent.onrender.com/generate/bid', 
-        { lead_text: leadText, tone, size, project_category: projectCategory, word_count_target: customWords },
+        { lead_text: leadText, tone, size, project_category: projectCategory, word_count_target: customWords, target_audience: targetAudience },
         { headers: { Authorization: `Bearer ${token}` } } 
       );
       setGeneratedBid(response.data.content); 
@@ -524,6 +525,15 @@ function Dashboard() {
                     <option>Short</option>
                     <option>Medium</option>
                     <option>Large</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-2">Audience Persona</label>
+                  <select value={targetAudience} onChange={(e) => setTargetAudience(e.target.value)} className="w-full p-3 bg-gray-950/50 border border-gray-800 rounded-xl text-sm text-gray-300 outline-none focus:ring-1 focus:ring-blue-500 transition-all glow-hover">
+                    <option>General Manager / CEO</option>
+                    <option>CTO / Engineering Lead</option>
+                    <option>Non-Technical Founder</option>
+                    <option>HR / Recruitment</option>
                   </select>
                 </div>
                 <div>

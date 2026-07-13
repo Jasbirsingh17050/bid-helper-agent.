@@ -21,6 +21,7 @@ class BidRequest(BaseModel):
     size: str = "Medium"
     project_category: str = "General / Other"
     word_count_target: Optional[str] = ""
+    target_audience: str = "General Manager / CEO"
 
 class ReviseRequest(BaseModel):
     generation_id: str
@@ -111,6 +112,8 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
         system_prompt = (
             f"You are an expert sales engineer and proposal writer specializing in {request.project_category} projects. "
             "Write a highly convincing, professional bid for the following job lead.\n\n"
+            f"TARGET AUDIENCE: You are writing this proposal specifically for a {request.target_audience}. "
+            "Tailor your vocabulary, technical depth, and value proposition to appeal directly to this persona's priorities.\n\n"
             f"Please write it in a '{request.tone}' tone.\n\n"
             f"{size_prompt}\n\n"
             f"Tailor your language, technologies, and approach specifically for a {request.project_category} project.\n\n"
@@ -156,6 +159,7 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             tone=request.tone,
             size=request.size,
             project_category=request.project_category,
+            target_audience=request.target_audience,
             revisions=[Revision(content=generated_text, action_type="original")],
             retrieved_kb_ids=retrieved_ids,
             confidence_score=confidence_score
