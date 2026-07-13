@@ -68,8 +68,21 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
         # HARSH STRICT WORD COUNT ENFORCEMENT
         # -------------------------------------------------------------
         size_prompt = ""
+        
+        # If Custom Words is filled out, completely IGNORE the dropdown
         if request.word_count_target and request.word_count_target.strip():
-            size_prompt = f"SIZE REQUIREMENT: The user has strictly requested an exact length of around {request.word_count_target} words. Prioritize this over all other size rules."
+            target = request.word_count_target.strip()
+            size_prompt = (
+                f"CRITICAL SIZE REQUIREMENT: The user has strictly requested a custom length of exactly {target} words. "
+                "You must OVERRIDE all other size rules and hit this exact word count. "
+                "If the target is high, you MUST NOT stop early. You must aggressively expand the proposal by adding: "
+                "1. A highly detailed, multi-paragraph executive summary. "
+                "2. An exhaustive, deeply technical architecture and methodology breakdown. "
+                "3. A rigorous week-by-week timeline and milestone schedule. "
+                "4. Comprehensive risk mitigation strategies and QA protocols. "
+                "Keep writing valuable, highly relevant content until you reach exactly the requested length."
+            )
+        # Otherwise, fall back to the dropdown rules
         elif request.size == "Short":
             size_prompt = (
                 "SIZE REQUIREMENT: Small / Short Bid (STRICTLY 100 - 200 Words MAX).\n"
@@ -107,6 +120,9 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             f"{banned_phrases_instruction}"
         )
 
+        # -------------------------------------------------------------
+        # INCREASED MAX TOKENS TO ALLOW FOR VERY LONG CUSTOM BIDS
+        # -------------------------------------------------------------
         chat_completion = await groq_client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -114,7 +130,7 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             ],
             model="llama-3.1-8b-instant",
             temperature=0.7,
-            max_tokens=1024,
+            max_tokens=3500, # Increased from 1024 to 3500!
         )
         
         generated_text = chat_completion.choices[0].message.content
@@ -159,7 +175,7 @@ async def ai_revise_bid(request: ReviseRequest, current_user: dict = Depends(get
             ],
             model="llama-3.1-8b-instant",
             temperature=0.7,
-            max_tokens=1024,
+            max_tokens=3500, # Increased from 1024 to 3500 here too!
         )
         
         revised_text = chat_completion.choices[0].message.content
