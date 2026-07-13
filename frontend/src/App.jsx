@@ -6,7 +6,8 @@ import ReactMarkdown from 'react-markdown';
 import { 
   Sparkles, Copy, Download, Save, Send, LogOut, 
   LayoutDashboard, History, Database, Settings as SettingsIcon, 
-  CheckCircle2, AlertCircle, Zap, Printer, Clock, FileText
+  CheckCircle2, AlertCircle, Zap, Printer, Clock, FileText,
+  Eye, EyeOff, Users, UserCheck, UserX
 } from 'lucide-react';
 
 const GlobalStyles = () => (
@@ -49,6 +50,7 @@ function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // NEW: State for Eye button
   const [role, setRole] = useState('admin');
   const [error, setError] = useState('');
   const [toast, setToast] = useState({ message: '', type: '' });
@@ -94,12 +96,49 @@ function Auth() {
           {isLogin ? "Welcome Back" : "Initialize Agent"}
         </h2>
         {error && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-xl mb-6 text-sm flex items-center gap-3"><AlertCircle size={18}/>{error}</div>}
+        
+        {}
         <form onSubmit={handleAuth} className="space-y-5">
-          <div><label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Username</label><input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full p-4 bg-gray-950/50 border border-gray-800 rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all outline-none text-white placeholder-gray-600 shadow-inner" required /></div>
-          <div><label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Password</label><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 bg-gray-950/50 border border-gray-800 rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all outline-none text-white placeholder-gray-600 shadow-inner" required /></div>
-          {!isLogin && (<div><label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Role</label><select value={role} onChange={(e) => setRole(e.target.value)} className="w-full p-4 bg-gray-950/50 border border-gray-800 rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all outline-none text-white shadow-inner appearance-none"><option value="admin">Admin</option><option value="team">Team Member</option></select></div>)}
-          <button type="submit" className="click-flash active:scale-[0.98] w-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white font-bold py-4 px-4 rounded-xl shadow-[0_0_20px_rgba(56,189,248,0.3)] hover:shadow-[0_0_30px_rgba(56,189,248,0.5)] transition-all mt-4 text-lg">{isLogin ? "Access System" : "Create Profile"}</button>
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Username</label>
+            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full p-4 bg-gray-950/50 border border-gray-800 rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all outline-none text-white placeholder-gray-600 shadow-inner" required />
+          </div>
+          
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Password</label>
+            <div className="relative">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                className="w-full p-4 pr-12 bg-gray-950/50 border border-gray-800 rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all outline-none text-white placeholder-gray-600 shadow-inner" 
+                required 
+              />
+              <button 
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-cyan-400 transition-colors"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+
+          {!isLogin && (
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Role</label>
+              <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full p-4 bg-gray-950/50 border border-gray-800 rounded-xl focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all outline-none text-white shadow-inner appearance-none">
+                <option value="admin">Admin</option>
+                <option value="team">Team Member</option>
+              </select>
+            </div>
+          )}
+          
+          <button type="submit" className="click-flash active:scale-[0.98] w-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white font-bold py-4 px-4 rounded-xl shadow-[0_0_20px_rgba(56,189,248,0.3)] hover:shadow-[0_0_30px_rgba(56,189,248,0.5)] transition-all mt-4 text-lg">
+            {isLogin ? "Access System" : "Create Profile"}
+          </button>
         </form>
+        
         <div className="mt-8 flex items-center justify-between opacity-50"><hr className="w-full border-gray-700" /><span className="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">OR</span><hr className="w-full border-gray-700" /></div>
         <div className="mt-8 flex justify-center click-flash active:scale-[0.98] rounded-full transition-transform"><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError("Google Login Failed")} theme="filled_black" shape="pill" size="large" text="continue_with" /></div>
         <div className="mt-8 text-center text-sm text-gray-400 font-medium">
@@ -125,27 +164,38 @@ function Dashboard() {
     setTimeout(() => setToast({ message: '', type: '' }), 4000);
   };
 
+  // Generation States
   const [leadText, setLeadText] = useState('');
   const [tone, setTone] = useState('Professional');
   const [size, setSize] = useState('Medium');
   const [projectCategory, setProjectCategory] = useState('General / Other');
-  const [wordCountTarget, setWordCountTarget] = useState(''); // NEW CUSTOM WORD COUNT
+  const [wordCountTarget, setWordCountTarget] = useState(''); 
   const [generatedBid, setGeneratedBid] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentGenerationId, setCurrentGenerationId] = useState(null);
   const [isSavingRevision, setIsSavingRevision] = useState(false);
   const [isRevising, setIsRevising] = useState(false);
+
+  // History States
   const [historyBids, setHistoryBids] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // Settings & KB States
   const [file, setFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [settings, setSettings] = useState({ banned_phrases: '', confidential_keywords: '' });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
+  // NEW: Users States (This was causing the white screen!)
+  const [usersList, setUsersList] = useState([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
   useEffect(() => { if (!token) navigate('/'); }, [token, navigate]);
+  
   useEffect(() => {
     if (activeTab === 'settings' && role === 'admin') loadSettings();
     if (activeTab === 'history') loadHistory();
+    if (activeTab === 'users' && role === 'admin') loadUsers(); // NEW: Load users when tab is clicked
   }, [activeTab]);
 
   const handleLogout = () => { localStorage.clear(); navigate('/'); };
@@ -239,6 +289,26 @@ function Dashboard() {
     } catch (error) { showToast("Error saving settings.", "error"); } finally { setIsSavingSettings(false); }
   };
 
+  // NEW: User Management Functions
+  const loadUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      const response = await axios.get('https://bid-helper-agent.onrender.com/auth/users', { headers: { Authorization: `Bearer ${token}` } });
+      setUsersList(response.data.users);
+    } catch (error) { showToast("Failed to load users.", "error"); } finally { setIsLoadingUsers(false); }
+  };
+
+  const handleToggleUserStatus = async (targetUsername, currentStatus) => {
+    try {
+      await axios.put(`https://bid-helper-agent.onrender.com/auth/users/${targetUsername}/status`,
+        { is_active: !currentStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      showToast(`User ${targetUsername} status updated.`, "success");
+      loadUsers(); // Refresh the list!
+    } catch (error) { showToast(error.response?.data?.detail || "Failed to update user status.", "error"); }
+  };
+
   const TabButton = ({ id, icon: Icon, label }) => (
     <button onClick={() => setActiveTab(id)} className={`click-flash active:scale-[0.95] flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all duration-200 ${activeTab === id ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_20px_rgba(34,211,238,0.15)]' : 'text-gray-500 border border-transparent hover:bg-gray-800/50 hover:text-gray-300'}`}>
       <Icon size={18} className={activeTab === id ? 'text-cyan-400' : 'text-gray-500'} /> {label}
@@ -262,11 +332,16 @@ function Dashboard() {
         <div className="flex space-x-3 mb-10 bg-gray-900/40 p-2 rounded-3xl inline-flex border border-gray-800 shadow-xl backdrop-blur-xl">
           <TabButton id="generate" icon={LayoutDashboard} label="Generate Engine" />
           <TabButton id="history" icon={History} label="Intelligence Logs" />
-          {role === 'admin' && (<><TabButton id="users" icon={Users} label="Team Access" /><TabButton id="kb" icon={Database} label="Knowledge Base" /><TabButton id="settings" icon={SettingsIcon} label="System Rules" /></>)}
+          {role === 'admin' && (
+            <>
+              <TabButton id="users" icon={Users} label="Team Access" />
+              <TabButton id="kb" icon={Database} label="Knowledge Base" />
+              <TabButton id="settings" icon={SettingsIcon} label="System Rules" />
+            </>
+          )}
         </div>
 
         {activeTab === 'generate' && (
-          // HERE IS THE FIX: Strict container height calc(100vh - 200px) and min-h-0 so the inside panels must scroll
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8" style={{ height: "calc(100vh - 220px)", minHeight: "600px" }}>
             
             {/* Left Column */}
@@ -293,7 +368,6 @@ function Dashboard() {
                     <option>Short</option><option>Medium</option><option>Large</option>
                   </select>
                 </div>
-                {/* NEW CUSTOM WORD COUNT BOX */}
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">Custom Words</label>
                   <input type="number" placeholder="e.g. 150" value={wordCountTarget} onChange={(e) => setWordCountTarget(e.target.value)} className="w-full p-3 bg-gray-950/50 border border-gray-800 rounded-xl focus:ring-2 focus:ring-cyan-500/50 outline-none text-xs font-medium text-cyan-400 placeholder-gray-600 shadow-inner" />
@@ -315,7 +389,6 @@ function Dashboard() {
                 </div>
               </div>
 
-              {/* OVERFLOW FIX: flex-1, min-h-0, overflow-y-auto strict application */}
               {generatedBid ? (
                 <>
                   <div id="markdown-render-content" className="w-full flex-1 min-h-0 p-6 bg-gray-950/50 border border-gray-800 rounded-2xl overflow-y-auto shadow-inner break-words whitespace-pre-wrap
@@ -353,7 +426,7 @@ function Dashboard() {
           </div>
         )}
 
-        {/* --- TAB: HISTORY --- */}
+        {}
         {activeTab === 'history' && (
           <div className="bg-gray-900/50 backdrop-blur-2xl p-10 rounded-[2rem] shadow-2xl border border-gray-700/50">
             <h3 className="text-2xl font-extrabold mb-10 text-white flex items-center gap-3"><History className="text-cyan-400 w-8 h-8"/> Intelligence Logs</h3>
@@ -382,8 +455,7 @@ function Dashboard() {
                       {latestRevision && (
                         <div>
                           <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 ml-1 flex items-center gap-2">Final Output <CheckCircle2 size={14} className="text-emerald-500"/></h4>
-                          <div className="w-full text-sm text-gray-300 bg-gray-900/50 border border-gray-800 rounded-2xl p-6 h-64 overflow-y-auto shadow-inner 
-                          [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full">
+                          <div className="w-full text-sm text-gray-300 bg-gray-900/50 border border-gray-800 rounded-2xl p-6 h-64 overflow-y-auto shadow-inner [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full">
                              <ReactMarkdown>{latestRevision.content}</ReactMarkdown>
                           </div>
                         </div>
@@ -396,42 +468,7 @@ function Dashboard() {
           </div>
         )}
 
-        {/* --- TAB: KNOWLEDGE BASE (ADMIN) --- */}
-        {activeTab === 'kb' && role === 'admin' && (
-          <div className="bg-gray-900/50 backdrop-blur-2xl p-10 rounded-[2rem] shadow-2xl border border-gray-700/50 max-w-2xl mx-auto">
-            <div className="flex items-center gap-4 mb-6"><Database className="text-cyan-400 w-10 h-10"/><h3 className="text-3xl font-extrabold text-white tracking-tight">Data Matrix</h3></div>
-            <p className="text-gray-400 text-base font-medium mb-10 leading-relaxed">Upload a CSV containing your company's past successful projects.</p>
-            <div className="border-2 border-dashed border-gray-700 rounded-3xl p-12 text-center bg-gray-950/50 mb-8 hover:border-cyan-500/50 hover:bg-gray-900/80 transition-all group">
-              <Database className="mx-auto text-gray-600 group-hover:text-cyan-500/50 mb-6 w-16 h-16 transition-colors" />
-              <input type="file" accept=".csv" onChange={(e) => setFile(e.target.files[0])} className="block w-full text-sm text-gray-400 file:mr-6 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-cyan-500/10 file:text-cyan-400 file:border file:border-cyan-500/30 hover:file:bg-cyan-500/20 cursor-pointer" />
-            </div>
-            <button onClick={handleUpload} disabled={!file || isUploading} className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold py-5 px-6 rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] disabled:opacity-50 flex justify-center items-center gap-3 text-lg">
-              {isUploading ? <><Sparkles className="animate-spin"/> Initializing...</> : <><Database/> Train Neural Network</>}
-            </button>
-          </div>
-        )}
-
-        {/* --- TAB: SETTINGS (ADMIN) --- */}
-        {activeTab === 'settings' && role === 'admin' && (
-          <div className="bg-gray-900/50 backdrop-blur-2xl p-10 rounded-[2rem] shadow-2xl border border-gray-700/50 max-w-2xl mx-auto">
-             <div className="flex items-center gap-4 mb-10"><SettingsIcon className="text-cyan-400 w-10 h-10"/><h3 className="text-3xl font-extrabold text-white tracking-tight">System Protocols</h3></div>
-            <div className="space-y-10">
-              <div>
-                <label className="block text-sm font-extrabold text-gray-300 mb-3 tracking-wide">Banned Lexicon (Clichés)</label>
-                <textarea value={settings.banned_phrases} onChange={(e) => setSettings({...settings, banned_phrases: e.target.value})} placeholder="e.g., hope this finds you well, delve, synergy, robust" className="w-full p-5 bg-gray-950/50 border border-gray-800 rounded-2xl focus:ring-2 focus:ring-cyan-500/50 outline-none text-gray-200 shadow-inner resize-none font-medium" rows="3" />
-              </div>
-              <div>
-                <label className="block text-sm font-extrabold text-gray-300 mb-3 tracking-wide">Restricted Entities (Alerts)</label>
-                <textarea value={settings.confidential_keywords} onChange={(e) => setSettings({...settings, confidential_keywords: e.target.value})} placeholder="e.g., internal budget, stealth, confidential" className="w-full p-5 bg-gray-950/50 border border-gray-800 rounded-2xl focus:ring-2 focus:ring-cyan-500/50 outline-none text-gray-200 shadow-inner resize-none font-medium" rows="3" />
-              </div>
-              <button onClick={handleSaveSettings} disabled={isSavingSettings} className="w-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white font-bold py-5 px-6 rounded-2xl shadow-[0_0_20px_rgba(56,189,248,0.3)] hover:shadow-[0_0_40px_rgba(56,189,248,0.5)] disabled:opacity-50 flex justify-center items-center gap-3 text-lg">
-                <Save/> {isSavingSettings ? "Saving..." : "Lock Protocols"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* --- TAB: USER MANAGEMENT (ADMIN) --- */}
+        {}
         {activeTab === 'users' && role === 'admin' && (
           <div className="bg-gray-900/50 backdrop-blur-2xl p-10 rounded-[2rem] shadow-2xl border border-gray-700/50 max-w-4xl mx-auto">
              <div className="flex items-center gap-4 mb-10"><Users className="text-cyan-400 w-10 h-10"/><h3 className="text-3xl font-extrabold text-white tracking-tight">Team Access Matrix</h3></div>
@@ -476,6 +513,40 @@ function Dashboard() {
                   </table>
                </div>
              )}
+          </div>
+        )}
+
+        {}
+        {activeTab === 'kb' && role === 'admin' && (
+          <div className="bg-gray-900/50 backdrop-blur-2xl p-10 rounded-[2rem] shadow-2xl border border-gray-700/50 max-w-2xl mx-auto">
+            <div className="flex items-center gap-4 mb-6"><Database className="text-cyan-400 w-10 h-10"/><h3 className="text-3xl font-extrabold text-white tracking-tight">Data Matrix</h3></div>
+            <p className="text-gray-400 text-base font-medium mb-10 leading-relaxed">Upload a CSV containing your company's past successful projects.</p>
+            <div className="border-2 border-dashed border-gray-700 rounded-3xl p-12 text-center bg-gray-950/50 mb-8 hover:border-cyan-500/50 hover:bg-gray-900/80 transition-all group">
+              <Database className="mx-auto text-gray-600 group-hover:text-cyan-500/50 mb-6 w-16 h-16 transition-colors" />
+              <input type="file" accept=".csv" onChange={(e) => setFile(e.target.files[0])} className="block w-full text-sm text-gray-400 file:mr-6 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-cyan-500/10 file:text-cyan-400 file:border file:border-cyan-500/30 hover:file:bg-cyan-500/20 cursor-pointer" />
+            </div>
+            <button onClick={handleUpload} disabled={!file || isUploading} className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold py-5 px-6 rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] disabled:opacity-50 flex justify-center items-center gap-3 text-lg">
+              {isUploading ? <><Sparkles className="animate-spin"/> Initializing...</> : <><Database/> Train Neural Network</>}
+            </button>
+          </div>
+        )}
+
+        {activeTab === 'settings' && role === 'admin' && (
+          <div className="bg-gray-900/50 backdrop-blur-2xl p-10 rounded-[2rem] shadow-2xl border border-gray-700/50 max-w-2xl mx-auto">
+             <div className="flex items-center gap-4 mb-10"><SettingsIcon className="text-cyan-400 w-10 h-10"/><h3 className="text-3xl font-extrabold text-white tracking-tight">System Protocols</h3></div>
+            <div className="space-y-10">
+              <div>
+                <label className="block text-sm font-extrabold text-gray-300 mb-3 tracking-wide">Banned Lexicon (Clichés)</label>
+                <textarea value={settings.banned_phrases} onChange={(e) => setSettings({...settings, banned_phrases: e.target.value})} placeholder="e.g., hope this finds you well, delve, synergy, robust" className="w-full p-5 bg-gray-950/50 border border-gray-800 rounded-2xl focus:ring-2 focus:ring-cyan-500/50 outline-none text-gray-200 shadow-inner resize-none font-medium" rows="3" />
+              </div>
+              <div>
+                <label className="block text-sm font-extrabold text-gray-300 mb-3 tracking-wide">Restricted Entities (Alerts)</label>
+                <textarea value={settings.confidential_keywords} onChange={(e) => setSettings({...settings, confidential_keywords: e.target.value})} placeholder="e.g., internal budget, stealth, confidential" className="w-full p-5 bg-gray-950/50 border border-gray-800 rounded-2xl focus:ring-2 focus:ring-cyan-500/50 outline-none text-gray-200 shadow-inner resize-none font-medium" rows="3" />
+              </div>
+              <button onClick={handleSaveSettings} disabled={isSavingSettings} className="w-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white font-bold py-5 px-6 rounded-2xl shadow-[0_0_20px_rgba(56,189,248,0.3)] hover:shadow-[0_0_40px_rgba(56,189,248,0.5)] disabled:opacity-50 flex justify-center items-center gap-3 text-lg">
+                <Save/> {isSavingSettings ? "Saving..." : "Lock Protocols"}
+              </button>
+            </div>
           </div>
         )}
 
