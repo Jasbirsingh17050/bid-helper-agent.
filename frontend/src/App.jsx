@@ -6,8 +6,38 @@ import ReactMarkdown from 'react-markdown';
 import { 
   Sparkles, Copy, Download, Save, Send, LogOut, 
   LayoutDashboard, History, Database, Settings as SettingsIcon, 
-  CheckCircle2, AlertCircle, Zap
+  CheckCircle2, AlertCircle, Zap, Printer, Clock, FileText
 } from 'lucide-react';
+
+// --- GLOBAL STYLES & TYPOGRAPHY ---
+const GlobalStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    
+    /* Tactile Click Flash Animation */
+    .click-flash {
+      position: relative;
+      overflow: hidden;
+    }
+    .click-flash::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255, 255, 255, 0.4);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .click-flash:active::after {
+      opacity: 1;
+      transition: opacity 0s;
+    }
+  `}</style>
+);
 
 // --- PREMIUM TOAST COMPONENT ---
 function Toast({ message, type, onClose }) {
@@ -95,6 +125,7 @@ function Auth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0B0F19] text-gray-100 relative selection:bg-cyan-500/30">
+      <GlobalStyles />
       <AmbientBackground />
       <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: '' })} />
       
@@ -128,7 +159,7 @@ function Auth() {
               </select>
             </div>
           )}
-          <button type="submit" className="w-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white font-bold py-4 px-4 rounded-xl shadow-[0_0_20px_rgba(56,189,248,0.3)] hover:shadow-[0_0_30px_rgba(56,189,248,0.5)] transform hover:-translate-y-1 transition-all duration-200 mt-4 text-lg">
+          <button type="submit" className="click-flash active:scale-[0.98] w-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white font-bold py-4 px-4 rounded-xl shadow-[0_0_20px_rgba(56,189,248,0.3)] hover:shadow-[0_0_30px_rgba(56,189,248,0.5)] transition-all duration-200 mt-4 text-lg">
             {isLogin ? "Access System" : "Create Profile"}
           </button>
         </form>
@@ -139,7 +170,7 @@ function Auth() {
           <hr className="w-full border-gray-700" />
         </div>
         
-        <div className="mt-8 flex justify-center transform hover:-translate-y-0.5 transition-all duration-200">
+        <div className="mt-8 flex justify-center click-flash active:scale-[0.98] rounded-full transition-transform">
           <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError("Google Login Failed")} theme="filled_black" shape="pill" size="large" text="continue_with" />
         </div>
 
@@ -255,6 +286,31 @@ function Dashboard() {
     showToast("Copied to clipboard!", "success");
   };
 
+  // --- NEW PDF EXPORT FEATURE ---
+  const handlePdfExport = () => {
+    if (!generatedBid) return;
+    const printWindow = window.open('', '', 'height=800,width=800');
+    printWindow.document.write('<html><head><title>Generated Proposal</title>');
+    printWindow.document.write(`
+      <style>
+        body { font-family: 'Inter', Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; padding: 40px; max-width: 800px; margin: 0 auto; }
+        h1, h2, h3 { color: #000; margin-top: 24px; margin-bottom: 16px; font-weight: 700; }
+        p { margin-bottom: 16px; }
+        ul, ol { margin-bottom: 16px; padding-left: 24px; }
+        li { margin-bottom: 8px; }
+        strong { color: #000; font-weight: 700; }
+      </style>
+    `);
+    printWindow.document.write('</head><body>');
+    // Grab the rendered HTML from our hidden or visible markdown container
+    const content = document.getElementById('markdown-render-content').innerHTML;
+    printWindow.document.write(content);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); }, 250);
+  };
+
   const handleUpload = async () => {
     if (!file) return showToast("Please select a CSV file.", "error");
     setIsUploading(true);
@@ -302,14 +358,19 @@ function Dashboard() {
   const TabButton = ({ id, icon: Icon, label }) => (
     <button 
       onClick={() => setActiveTab(id)} 
-      className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all duration-300 ${activeTab === id ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_20px_rgba(34,211,238,0.15)]' : 'text-gray-500 border border-transparent hover:bg-gray-800/50 hover:text-gray-300 hover:border-gray-700/50'}`}
+      className={`click-flash active:scale-[0.95] flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all duration-200 ${activeTab === id ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_20px_rgba(34,211,238,0.15)]' : 'text-gray-500 border border-transparent hover:bg-gray-800/50 hover:text-gray-300 hover:border-gray-700/50'}`}
     >
       <Icon size={18} className={activeTab === id ? 'text-cyan-400' : 'text-gray-500'} /> {label}
     </button>
   );
 
+  // Analytics Math
+  const wordCount = generatedBid ? generatedBid.split(/\s+/).filter(word => word.length > 0).length : 0;
+  const readTime = Math.ceil(wordCount / 200);
+
   return (
     <div className="min-h-screen bg-[#0B0F19] text-gray-100 font-sans selection:bg-cyan-500/30">
+      <GlobalStyles />
       <AmbientBackground />
       <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: '' })} />
       
@@ -327,7 +388,7 @@ function Dashboard() {
               <span className="text-sm font-medium text-gray-400">Agent: <strong className="text-gray-100">{username}</strong></span>
               {role === 'admin' && <span className="bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs px-2.5 py-1 rounded-lg font-bold tracking-widest uppercase">Admin</span>}
             </div>
-            <button onClick={handleLogout} className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-red-400 transition-colors bg-gray-900/50 p-3 rounded-xl border border-gray-800 hover:border-red-500/30">
+            <button onClick={handleLogout} className="click-flash active:scale-95 flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-red-400 transition-colors bg-gray-900/50 p-3 rounded-xl border border-gray-800 hover:border-red-500/30">
               <LogOut size={18} />
             </button>
           </div>
@@ -361,7 +422,7 @@ function Dashboard() {
               <textarea 
                 value={leadText} onChange={(e) => setLeadText(e.target.value)}
                 placeholder="Paste the raw Upwork/Freelancer job description here..."
-                className="w-full flex-grow p-6 bg-gray-950/50 border border-gray-800 rounded-2xl mb-8 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 resize-none text-gray-200 outline-none transition-all shadow-inner placeholder-gray-600 leading-relaxed"
+                className="w-full flex-grow p-6 bg-gray-950/50 border border-gray-800 rounded-2xl mb-8 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 resize-none text-gray-200 outline-none transition-all shadow-inner placeholder-gray-600 leading-relaxed font-medium"
               />
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
                 <div>
@@ -392,7 +453,7 @@ function Dashboard() {
                   </select>
                 </div>
               </div>
-              <button onClick={handleGenerate} disabled={isGenerating} className="w-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white font-bold py-5 px-6 rounded-2xl shadow-[0_0_20px_rgba(56,189,248,0.3)] hover:shadow-[0_0_40px_rgba(56,189,248,0.5)] transform hover:-translate-y-1 transition-all duration-300 active:translate-y-0 disabled:opacity-50 disabled:hover:translate-y-0 flex justify-center items-center gap-3 text-lg">
+              <button onClick={handleGenerate} disabled={isGenerating} className="click-flash active:scale-[0.98] w-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white font-bold py-5 px-6 rounded-2xl shadow-[0_0_20px_rgba(56,189,248,0.3)] hover:shadow-[0_0_40px_rgba(56,189,248,0.5)] transition-all duration-200 disabled:opacity-50 flex justify-center items-center gap-3 text-lg">
                 {isGenerating ? <><Sparkles className="animate-spin" size={24}/> Processing Neural Core...</> : <><Sparkles size={24}/> Initialize AI Generation</>}
               </button>
             </div>
@@ -401,25 +462,33 @@ function Dashboard() {
             <div className="bg-gray-900/50 backdrop-blur-2xl p-8 rounded-[2rem] shadow-2xl border border-gray-700/50 flex flex-col h-full">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-extrabold text-white flex items-center gap-2"><CheckCircle2 className="text-emerald-400" size={24}/> Output Matrix</h3>
-                <div className="flex gap-3">
-                  <button onClick={handleCopy} disabled={!generatedBid} className="flex items-center gap-2 text-sm font-bold bg-gray-950/50 border border-gray-800 hover:bg-gray-800 hover:border-gray-600 text-gray-300 px-5 py-2.5 rounded-xl disabled:opacity-30 transition-all shadow-inner"><Copy size={16}/> Copy</button>
-                  <button onClick={handleDownload} disabled={!generatedBid} className="flex items-center gap-2 text-sm font-bold bg-gray-950/50 border border-gray-800 hover:bg-gray-800 hover:border-gray-600 text-gray-300 px-5 py-2.5 rounded-xl disabled:opacity-30 transition-all shadow-inner"><Download size={16}/> .txt</button>
+                <div className="flex gap-2">
+                  <button onClick={handlePdfExport} disabled={!generatedBid} className="click-flash active:scale-95 flex items-center gap-2 text-xs font-bold bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/20 text-indigo-300 px-4 py-2.5 rounded-xl disabled:opacity-30 transition-all shadow-inner"><Printer size={16}/> PDF</button>
+                  <button onClick={handleCopy} disabled={!generatedBid} className="click-flash active:scale-95 flex items-center gap-2 text-xs font-bold bg-gray-950/50 border border-gray-800 hover:bg-gray-800 text-gray-300 px-4 py-2.5 rounded-xl disabled:opacity-30 transition-all shadow-inner"><Copy size={16}/> Copy</button>
+                  <button onClick={handleDownload} disabled={!generatedBid} className="click-flash active:scale-95 flex items-center gap-2 text-xs font-bold bg-gray-950/50 border border-gray-800 hover:bg-gray-800 text-gray-300 px-4 py-2.5 rounded-xl disabled:opacity-30 transition-all shadow-inner"><Download size={16}/> .txt</button>
                 </div>
               </div>
 
               {generatedBid ? (
-                /* MARKDOWN RENDERER - DARK MODE OPTIMIZED */
-                <div className="w-full flex-grow p-8 bg-gray-950/50 border border-gray-800 rounded-2xl overflow-y-auto shadow-inner 
-                [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full 
-                [&>h1]:text-2xl [&>h1]:font-extrabold [&>h1]:mb-4 [&>h1]:text-white [&>h1]:tracking-tight
-                [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-3 [&>h2]:text-gray-100 
-                [&>h3]:text-lg [&>h3]:font-bold [&>h3]:mb-2 [&>h3]:text-gray-200 
-                [&>p]:mb-5 [&>p]:leading-relaxed [&>p]:text-gray-300 [&>p]:text-base
-                [&>ul]:list-disc [&>ul]:pl-6 [&>ul]:mb-5 [&>ul>li]:text-gray-300 [&>ul>li]:mb-2 
-                [&>ol]:list-decimal [&>ol]:pl-6 [&>ol]:mb-5 [&>ol>li]:text-gray-300 [&>ol>li]:mb-2
-                [&>strong]:font-extrabold [&>strong]:text-cyan-400">
-                  <ReactMarkdown>{generatedBid}</ReactMarkdown>
-                </div>
+                <>
+                  <div id="markdown-render-content" className="w-full flex-grow p-8 bg-gray-950/50 border border-gray-800 rounded-2xl overflow-y-auto shadow-inner 
+                  [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full 
+                  [&>h1]:text-2xl [&>h1]:font-extrabold [&>h1]:mb-4 [&>h1]:text-white [&>h1]:tracking-tight
+                  [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-3 [&>h2]:text-gray-100 
+                  [&>h3]:text-lg [&>h3]:font-bold [&>h3]:mb-2 [&>h3]:text-gray-200 
+                  [&>p]:mb-5 [&>p]:leading-relaxed [&>p]:text-gray-300 [&>p]:text-base [&>p]:font-medium
+                  [&>ul]:list-disc [&>ul]:pl-6 [&>ul]:mb-5 [&>ul>li]:text-gray-300 [&>ul>li]:mb-2 [&>ul>li]:font-medium
+                  [&>ol]:list-decimal [&>ol]:pl-6 [&>ol]:mb-5 [&>ol>li]:text-gray-300 [&>ol>li]:mb-2 [&>ol>li]:font-medium
+                  [&>strong]:font-extrabold [&>strong]:text-cyan-400">
+                    <ReactMarkdown>{generatedBid}</ReactMarkdown>
+                  </div>
+                  
+                  {/* SURPRISE FEATURE: ANALYTICS METRICS */}
+                  <div className="flex gap-6 mt-4 px-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                    <div className="flex items-center gap-2"><FileText size={14} className="text-cyan-500/70" /> {wordCount} Words</div>
+                    <div className="flex items-center gap-2"><Clock size={14} className="text-indigo-500/70" /> ~{readTime} Min Read</div>
+                  </div>
+                </>
               ) : (
                 <div className="w-full flex-grow border-2 border-dashed border-gray-800 rounded-2xl flex flex-col items-center justify-center text-gray-600 bg-gray-950/30 gap-5 shadow-inner">
                   <Sparkles size={56} className="text-gray-700 opacity-50" />
@@ -428,17 +497,17 @@ function Dashboard() {
               )}
 
               {generatedBid && (
-                <div className="mt-8 space-y-5">
+                <div className="mt-6 space-y-5">
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">AI Post-Processing</span>
                     {isRevising && <span className="text-xs text-cyan-400 animate-pulse font-bold flex items-center gap-2"><Zap size={14}/> Rewriting Vectors...</span>}
                   </div>
                   <div className="flex gap-3 flex-wrap">
-                    <button onClick={() => handleAiRevise("Make this much shorter and more concise.")} disabled={isRevising} className="bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-sm font-bold py-3 px-5 rounded-xl border border-indigo-500/30 disabled:opacity-30 transition-all flex items-center gap-2 shadow-inner"><Sparkles size={16}/> Compact</button>
-                    <button onClick={() => handleAiRevise("Make the tone more aggressive, confident, and persuasive.")} disabled={isRevising} className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-sm font-bold py-3 px-5 rounded-xl border border-purple-500/30 disabled:opacity-30 transition-all flex items-center gap-2 shadow-inner"><Sparkles size={16}/> Aggressive</button>
-                    <button onClick={() => handleAiRevise("Fix any grammar mistakes and polish the language to be perfectly professional.")} disabled={isRevising} className="bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-sm font-bold py-3 px-5 rounded-xl border border-cyan-500/30 disabled:opacity-30 transition-all flex items-center gap-2 shadow-inner"><Sparkles size={16}/> Polish Grammar</button>
+                    <button onClick={() => handleAiRevise("Make this much shorter and more concise.")} disabled={isRevising} className="click-flash active:scale-95 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-sm font-bold py-3 px-5 rounded-xl border border-indigo-500/30 disabled:opacity-30 transition-all flex items-center gap-2 shadow-inner"><Sparkles size={16}/> Compact</button>
+                    <button onClick={() => handleAiRevise("Make the tone more aggressive, confident, and persuasive.")} disabled={isRevising} className="click-flash active:scale-95 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-sm font-bold py-3 px-5 rounded-xl border border-purple-500/30 disabled:opacity-30 transition-all flex items-center gap-2 shadow-inner"><Sparkles size={16}/> Aggressive</button>
+                    <button onClick={() => handleAiRevise("Fix any grammar mistakes and polish the language to be perfectly professional.")} disabled={isRevising} className="click-flash active:scale-95 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-sm font-bold py-3 px-5 rounded-xl border border-cyan-500/30 disabled:opacity-30 transition-all flex items-center gap-2 shadow-inner"><Sparkles size={16}/> Polish</button>
                   </div>
-                  <button onClick={handleSaveRevision} disabled={isSavingRevision} className="w-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold py-4 px-4 rounded-xl hover:bg-emerald-500/20 disabled:opacity-50 transition-all flex justify-center items-center gap-3 mt-4 shadow-inner text-lg tracking-wide">
+                  <button onClick={handleSaveRevision} disabled={isSavingRevision} className="click-flash active:scale-[0.98] w-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold py-4 px-4 rounded-xl hover:bg-emerald-500/20 disabled:opacity-50 transition-all flex justify-center items-center gap-3 shadow-inner text-lg tracking-wide">
                      <Save size={20}/> {isSavingRevision ? "Committing to Logs..." : "Save Configuration to Logs"}
                   </button>
                 </div>
@@ -471,14 +540,14 @@ function Dashboard() {
                       </div>
                       <div className="mb-6">
                         <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 ml-1">Target Description</h4>
-                        <p className="text-sm text-gray-400 bg-gray-900/50 border border-gray-800 p-5 rounded-2xl line-clamp-3 leading-relaxed">"{bid.lead_text}"</p>
+                        <p className="text-sm text-gray-400 bg-gray-900/50 border border-gray-800 p-5 rounded-2xl line-clamp-3 leading-relaxed font-medium">"{bid.lead_text}"</p>
                       </div>
                       {latestRevision && (
                         <div>
                           <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 ml-1 flex items-center gap-2">Final Output <CheckCircle2 size={14} className="text-emerald-500"/></h4>
                           <div className="w-full text-base text-gray-300 bg-gray-900/50 border border-gray-800 rounded-2xl p-6 h-64 overflow-y-auto shadow-inner 
                           [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full 
-                          [&>h3]:font-bold [&>h3]:text-lg [&>h3]:text-white [&>ul]:list-disc [&>ul]:pl-5 [&>strong]:text-cyan-400 [&>p]:mb-3">
+                          [&>h3]:font-bold [&>h3]:text-lg [&>h3]:text-white [&>ul]:list-disc [&>ul]:pl-5 [&>strong]:text-cyan-400 [&>p]:mb-3 [&>p]:font-medium [&>ul>li]:font-medium">
                              <ReactMarkdown>{latestRevision.content}</ReactMarkdown>
                           </div>
                         </div>
@@ -502,7 +571,7 @@ function Dashboard() {
               <input type="file" accept=".csv" onChange={(e) => setFile(e.target.files[0])} className="block w-full text-sm text-gray-400 file:mr-6 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-cyan-500/10 file:text-cyan-400 file:border file:border-cyan-500/30 hover:file:bg-cyan-500/20 cursor-pointer transition-all" />
             </div>
             
-            <button onClick={handleUpload} disabled={!file || isUploading} className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold py-5 px-6 rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] disabled:opacity-50 transition-all flex justify-center items-center gap-3 text-lg">
+            <button onClick={handleUpload} disabled={!file || isUploading} className="click-flash active:scale-[0.98] w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold py-5 px-6 rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] disabled:opacity-50 transition-all flex justify-center items-center gap-3 text-lg">
               {isUploading ? <><Sparkles className="animate-spin"/> Initializing Vectors...</> : <><Database/> Train Neural Network</>}
             </button>
           </div>
@@ -516,17 +585,17 @@ function Dashboard() {
             <div className="space-y-10">
               <div>
                 <label className="block text-sm font-extrabold text-gray-300 mb-3 tracking-wide">Banned Lexicon (Clichés)</label>
-                <textarea value={settings.banned_phrases} onChange={(e) => setSettings({...settings, banned_phrases: e.target.value})} placeholder="e.g., hope this finds you well, delve, synergy, robust" className="w-full p-5 bg-gray-950/50 border border-gray-800 rounded-2xl focus:ring-2 focus:ring-cyan-500/50 outline-none text-gray-200 shadow-inner resize-none placeholder-gray-600" rows="3" />
+                <textarea value={settings.banned_phrases} onChange={(e) => setSettings({...settings, banned_phrases: e.target.value})} placeholder="e.g., hope this finds you well, delve, synergy, robust" className="w-full p-5 bg-gray-950/50 border border-gray-800 rounded-2xl focus:ring-2 focus:ring-cyan-500/50 outline-none text-gray-200 shadow-inner resize-none placeholder-gray-600 font-medium" rows="3" />
                 <p className="text-xs text-red-400/80 mt-3 font-bold flex items-center gap-2 uppercase tracking-wider"><AlertCircle size={14}/> Neural net strictly blocked from these tokens.</p>
               </div>
 
               <div>
                 <label className="block text-sm font-extrabold text-gray-300 mb-3 tracking-wide">Restricted Entities (Alerts)</label>
-                <textarea value={settings.confidential_keywords} onChange={(e) => setSettings({...settings, confidential_keywords: e.target.value})} placeholder="e.g., internal budget, stealth, confidential" className="w-full p-5 bg-gray-950/50 border border-gray-800 rounded-2xl focus:ring-2 focus:ring-cyan-500/50 outline-none text-gray-200 shadow-inner resize-none placeholder-gray-600" rows="3" />
+                <textarea value={settings.confidential_keywords} onChange={(e) => setSettings({...settings, confidential_keywords: e.target.value})} placeholder="e.g., internal budget, stealth, confidential" className="w-full p-5 bg-gray-950/50 border border-gray-800 rounded-2xl focus:ring-2 focus:ring-cyan-500/50 outline-none text-gray-200 shadow-inner resize-none placeholder-gray-600 font-medium" rows="3" />
                 <p className="text-xs text-gray-500 mt-3 font-bold flex items-center gap-2 uppercase tracking-wider"><AlertCircle size={14}/> Triggers warning if pasted in input.</p>
               </div>
 
-              <button onClick={handleSaveSettings} disabled={isSavingSettings} className="w-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white font-bold py-5 px-6 rounded-2xl shadow-[0_0_20px_rgba(56,189,248,0.3)] hover:shadow-[0_0_40px_rgba(56,189,248,0.5)] disabled:opacity-50 transition-all flex justify-center items-center gap-3 text-lg">
+              <button onClick={handleSaveSettings} disabled={isSavingSettings} className="click-flash active:scale-[0.98] w-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white font-bold py-5 px-6 rounded-2xl shadow-[0_0_20px_rgba(56,189,248,0.3)] hover:shadow-[0_0_40px_rgba(56,189,248,0.5)] disabled:opacity-50 transition-all flex justify-center items-center gap-3 text-lg">
                 <Save/> {isSavingSettings ? "Saving..." : "Lock Protocols"}
               </button>
             </div>
