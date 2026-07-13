@@ -183,6 +183,7 @@ function Dashboard() {
   const [projectCategory, setProjectCategory] = useState('General / Other');
   const [wordCountTarget, setWordCountTarget] = useState(''); 
   const [generatedBid, setGeneratedBid] = useState('');
+  const [confidenceScore, setConfidenceScore] = useState(null); // <-- NEW STATE
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentGenerationId, setCurrentGenerationId] = useState(null);
   const [isSavingRevision, setIsSavingRevision] = useState(false);
@@ -214,13 +215,15 @@ function Dashboard() {
 
   const handleGenerate = async () => {
     if (!leadText.trim()) return showToast("Please enter a job lead!", "error");
-    setIsGenerating(true); setGeneratedBid(''); setCurrentGenerationId(null); 
+    setIsGenerating(true); setGeneratedBid(''); setCurrentGenerationId(null); setConfidenceScore(null);
     try {
       const response = await axios.post('https://bid-helper-agent.onrender.com/generate/bid', 
         { lead_text: leadText, tone, size, project_category: projectCategory, word_count_target: wordCountTarget },
         { headers: { Authorization: `Bearer ${token}` } } 
       );
-      setGeneratedBid(response.data.content); setCurrentGenerationId(response.data.generation_id); 
+      setGeneratedBid(response.data.content); 
+      setConfidenceScore(response.data.confidence_score); // <-- CATCH THE SCORE
+      setCurrentGenerationId(response.data.generation_id); 
       showToast("Bid generated successfully!", "success");
     } catch (error) { showToast("Error generating bid.", "error"); } finally { setIsGenerating(false); }
   };
@@ -442,7 +445,27 @@ function Dashboard() {
             {/* Right Column */}
             <div className="bg-gray-900/50 backdrop-blur-2xl p-8 rounded-[2rem] shadow-2xl border border-gray-700/50 flex flex-col h-full min-h-0">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-extrabold text-white flex items-center gap-2"><CheckCircle2 className="text-emerald-400" size={24}/> Output Matrix</h3>
+                <div className="flex items-center gap-4">
+                  <h3 className="text-xl font-extrabold text-white flex items-center gap-2"><CheckCircle2 className="text-emerald-400" size={24}/> Output Matrix</h3>
+                  
+                  {/* --- NEW: CONFIDENCE SCORE UI --- */}
+                  {confidenceScore !== null && (
+                    <div className="flex items-center gap-2 bg-gray-950/80 px-3 py-1.5 rounded-2xl border border-gray-800 shadow-inner">
+                      <div className="relative w-8 h-8 flex items-center justify-center">
+                        <svg className="w-full h-full transform -rotate-90">
+                          <circle cx="16" cy="16" r="14" stroke="#1f2937" strokeWidth="3" fill="none" />
+                          <circle cx="16" cy="16" r="14" stroke={confidenceScore > 85 ? '#10b981' : confidenceScore > 65 ? '#f59e0b' : '#ef4444'} strokeWidth="3" fill="none" 
+                                  strokeDasharray="88" strokeDashoffset={88 - (confidenceScore / 100) * 88} 
+                                  className="transition-all duration-1000 ease-out" />
+                        </svg>
+                        <span className="absolute text-[10px] font-bold" style={{color: confidenceScore > 85 ? '#10b981' : confidenceScore > 65 ? '#f59e0b' : '#ef4444'}}>{confidenceScore}</span>
+                      </div>
+                      <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest leading-tight">AI<br/>Score</span>
+                    </div>
+                  )}
+                  {/* ------------------------------- */}
+                  
+                </div>
                 <div className="flex gap-2">
                   <button onClick={handlePdfExport} disabled={!generatedBid} className="click-flash active:scale-95 flex items-center gap-2 text-xs font-bold bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/20 text-indigo-300 px-3 py-2 rounded-xl disabled:opacity-30"><Printer size={16}/> PDF</button>
                   <button onClick={handleWordExport} disabled={!generatedBid} className="click-flash active:scale-95 flex items-center gap-2 text-xs font-bold bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 text-blue-300 px-3 py-2 rounded-xl disabled:opacity-30"><Download size={16}/> Word (.doc)</button>
@@ -533,10 +556,18 @@ function Dashboard() {
                   return (
                     <div key={bid._id} className="bg-gray-950/50 border border-gray-800 rounded-3xl p-8 shadow-inner hover:border-cyan-500/50 transition-colors">
                       <div className="flex justify-between items-start mb-6">
-                        <div className="flex gap-3 flex-wrap">
+                        <div className="flex gap-3 flex-wrap items-center">
                           <span className="bg-indigo-500/10 text-indigo-300 text-xs font-bold px-4 py-1.5 rounded-full border border-indigo-500/20">{bid.tone}</span>
                           <span className="bg-purple-500/10 text-purple-300 text-xs font-bold px-4 py-1.5 rounded-full border border-purple-500/20">{bid.size}</span>
                           <span className="bg-cyan-500/10 text-cyan-300 text-xs font-bold px-4 py-1.5 rounded-full border border-cyan-500/20">{bid.project_category || 'General'}</span>
+                          
+                          {/* SHOW SCORE IN HISTORY TOO */}
+                          {bid.confidence_score && (
+                            <span className="flex items-center gap-1.5 bg-gray-950 text-xs font-bold px-3 py-1.5 rounded-full border border-gray-800" style={{color: bid.confidence_score > 85 ? '#10b981' : bid.confidence_score > 65 ? '#f59e0b' : '#ef4444'}}>
+                              <Target size={14}/> Score: {bid.confidence_score}/100
+                            </span>
+                          )}
+
                         </div>
                         <span className="text-xs font-bold text-gray-500 tracking-widest">{new Date(bid.created_at).toLocaleString()}</span>
                       </div>

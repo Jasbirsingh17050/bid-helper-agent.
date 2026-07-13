@@ -50,6 +50,7 @@ class GenerationRecord(BaseModel):
     retrieved_kb_ids: List[str] = []
     supporting_files_used: List[str] = [] 
     outcome_tag: Optional[str] = None 
+    confidence_score: Optional[int] = None 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     class Config:

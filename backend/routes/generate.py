@@ -64,6 +64,8 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
         search_query = request.lead_text[:60].replace('\n', ' ')
         web_context = perform_web_search(search_query)
 
+        import json # We need this to parse the AI's grading!
+
         # -------------------------------------------------------------
         # HARSH STRICT WORD COUNT ENFORCEMENT
         # -------------------------------------------------------------
@@ -118,7 +120,11 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             "Incorporate relevant metrics and technologies from these past projects to prove we can do the job:\n"
             f"{kb_context}\n\n"
             "Important: Do not invent any past projects. Only use the ones provided above."
-            f"{banned_phrases_instruction}"
+            f"{banned_phrases_instruction}\n\n"
+            "CRITICAL: You MUST output ONLY a valid JSON object. Do not include markdown blocks or any other text outside the JSON. "
+            "Your JSON must have EXACTLY two keys:\n"
+            "1. 'content': A string containing the fully formatted markdown proposal.\n"
+            "2. 'confidence_score': An integer between 1 and 100 representing how confident you are that this bid will win, based on our knowledge base match and the lead quality."
         )
 
         # -------------------------------------------------------------
@@ -129,12 +135,20 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": request.lead_text}
             ],
-            model="llama-3.3-70b-versatile", # <--- UPGRADE IS HERE
+            model="llama-3.3-70b-versatile",
             temperature=0.7,
-            max_tokens=4000, 
+            max_tokens=3500,
+            response_format={"type": "json_object"}
         )
         
-        generated_text = chat_completion.choices[0].message.content
+        raw_output = chat_completion.choices[0].message.content
+        try:
+            parsed_output = json.loads(raw_output)
+            generated_text = parsed_output.get("content", "Error parsing content.")
+            confidence_score = int(parsed_output.get("confidence_score", 85))
+        except Exception as e:
+            generated_text = raw_output
+            confidence_score = 85
 
         generation_doc = GenerationRecord(
             user_id=str(current_user["_id"]),
@@ -143,7 +157,8 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             size=request.size,
             project_category=request.project_category,
             revisions=[Revision(content=generated_text, action_type="original")],
-            retrieved_kb_ids=retrieved_ids
+            retrieved_kb_ids=retrieved_ids,
+            confidence_score=confidence_score
         )
         
         doc_dict = generation_doc.model_dump(by_alias=True)
@@ -154,6 +169,7 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
 
         return {
             "content": generated_text, 
+            "confidence_score": confidence_score,
             "generation_id": str(insert_result.inserted_id)
         }
 
