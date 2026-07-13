@@ -73,21 +73,22 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
         if request.word_count_target and request.word_count_target.strip():
             target = request.word_count_target.strip()
             size_prompt = (
-                f"CRITICAL SIZE REQUIREMENT: The user has strictly requested a custom length of exactly {target} words. "
-                "You must OVERRIDE all other size rules and hit this exact word count. "
-                "If the target is high, you MUST NOT stop early. You must aggressively expand the proposal by adding: "
-                "1. A highly detailed, multi-paragraph executive summary. "
-                "2. An exhaustive, deeply technical architecture and methodology breakdown. "
-                "3. A rigorous week-by-week timeline and milestone schedule. "
-                "4. Comprehensive risk mitigation strategies and QA protocols. "
-                "Keep writing valuable, highly relevant content until you reach exactly the requested length."
+                f"CRITICAL SIZE REQUIREMENT: You MUST write a proposal that is AT LEAST {target} words long. "
+                "Do not summarize. To hit this massive word count, you MUST include the following exhaustive sections:\n"
+                "1. Deep-Dive Executive Summary & Client Vision (Very Detailed)\n"
+                "2. Exhaustive Technical Architecture & Tech Stack Justification\n"
+                "3. 6-Phase Implementation Timeline (Provide multiple paragraphs per phase detailing deliverables)\n"
+                "4. Rigorous Risk Mitigation & QA Testing Protocols\n"
+                "5. Long-term Support, SLAs, and Scalability Plan\n"
+                "6. Detailed Conclusion & Financial ROI projection.\n"
+                f"Keep elaborating with rich, professional detail until you absolutely surpass {target} words."
             )
-        # Otherwise, fall back to the dropdown rules
+        # Fall back to strict mathematical rules for the dropdown
         elif request.size == "Short":
             size_prompt = (
                 "SIZE REQUIREMENT: Small / Short Bid (STRICTLY 100 - 200 Words MAX).\n"
                 "CRITICAL: Do NOT exceed 200 words. Cut out all fluff.\n"
-                "Target Scope: Simple, transactional proposals. Ideal Length: Under 1.5 minutes read time.\n"
+                "Target Scope: Simple, transactional proposals.\n"
                 "Core Structure: 1. Direct hook showing you read the requirements. 2. Brief statement of your immediate technical solution. 3. A single call-to-action."
             )
         elif request.size == "Medium":
@@ -121,16 +122,16 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
         )
 
         # -------------------------------------------------------------
-        # INCREASED MAX TOKENS TO ALLOW FOR VERY LONG CUSTOM BIDS
+        # UPGRADED TO THE MASSIVE 70-BILLION PARAMETER MODEL
         # -------------------------------------------------------------
         chat_completion = await groq_client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": request.lead_text}
             ],
-            model="llama-3.1-8b-instant",
+            model="llama-3.3-70b-versatile", # <--- UPGRADE IS HERE
             temperature=0.7,
-            max_tokens=3500, # Increased from 1024 to 3500!
+            max_tokens=4000, 
         )
         
         generated_text = chat_completion.choices[0].message.content
@@ -173,9 +174,9 @@ async def ai_revise_bid(request: ReviseRequest, current_user: dict = Depends(get
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            model="llama-3.1-8b-instant",
+            model="llama-3.3-70b-versatile", # <--- UPGRADE IS HERE
             temperature=0.7,
-            max_tokens=3500, # Increased from 1024 to 3500 here too!
+            max_tokens=4000, 
         )
         
         revised_text = chat_completion.choices[0].message.content
