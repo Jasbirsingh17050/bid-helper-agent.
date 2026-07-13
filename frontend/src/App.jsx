@@ -429,7 +429,38 @@ function Dashboard() {
         {}
         {activeTab === 'history' && (
           <div className="bg-gray-900/50 backdrop-blur-2xl p-10 rounded-[2rem] shadow-2xl border border-gray-700/50">
-            <h3 className="text-2xl font-extrabold mb-10 text-white flex items-center gap-3"><History className="text-cyan-400 w-8 h-8"/> Intelligence Logs</h3>
+            <div className="flex items-center gap-4 mb-10"><History className="text-cyan-400 w-10 h-10"/><h3 className="text-3xl font-extrabold text-white tracking-tight">Intelligence Logs & Analytics</h3></div>
+            
+            {/* NEW: ANALYTICS DASHBOARD */}
+            {!isLoadingHistory && historyBids.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+                <div className="bg-gray-950/50 border border-gray-800 p-5 rounded-2xl flex flex-col items-center justify-center shadow-inner">
+                  <Target className="text-indigo-400 mb-2" size={28}/>
+                  <span className="text-3xl font-extrabold text-white">{historyBids.length}</span>
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">Total Bids</span>
+                </div>
+                <div className="bg-emerald-500/10 border border-emerald-500/30 p-5 rounded-2xl flex flex-col items-center justify-center shadow-inner">
+                  <Trophy className="text-emerald-400 mb-2" size={28}/>
+                  <span className="text-3xl font-extrabold text-emerald-400">{historyBids.filter(b => b.outcome_tag === 'Won').length}</span>
+                  <span className="text-xs font-bold text-emerald-500/70 uppercase tracking-widest mt-1">Projects Won</span>
+                </div>
+                <div className="bg-red-500/10 border border-red-500/30 p-5 rounded-2xl flex flex-col items-center justify-center shadow-inner">
+                  <XCircle className="text-red-400 mb-2" size={28}/>
+                  <span className="text-3xl font-extrabold text-red-400">{historyBids.filter(b => b.outcome_tag === 'Lost').length}</span>
+                  <span className="text-xs font-bold text-red-500/70 uppercase tracking-widest mt-1">Projects Lost</span>
+                </div>
+                <div className="bg-cyan-500/10 border border-cyan-500/30 p-5 rounded-2xl flex flex-col items-center justify-center shadow-inner">
+                  <TrendingUp className="text-cyan-400 mb-2" size={28}/>
+                  <span className="text-3xl font-extrabold text-cyan-400">
+                    {historyBids.filter(b => b.outcome_tag === 'Won').length + historyBids.filter(b => b.outcome_tag === 'Lost').length > 0 
+                      ? Math.round((historyBids.filter(b => b.outcome_tag === 'Won').length / (historyBids.filter(b => b.outcome_tag === 'Won').length + historyBids.filter(b => b.outcome_tag === 'Lost').length)) * 100) 
+                      : 0}%
+                  </span>
+                  <span className="text-xs font-bold text-cyan-500/70 uppercase tracking-widest mt-1">Win Rate</span>
+                </div>
+              </div>
+            )}
+
             {isLoadingHistory ? (
               <div className="flex justify-center py-20"><Zap className="animate-pulse text-cyan-500" size={40}/></div>
             ) : historyBids.length === 0 ? (
@@ -460,6 +491,28 @@ function Dashboard() {
                           </div>
                         </div>
                       )}
+                      
+                      {/* NEW: WIN/LOSS BUTTONS */}
+                      <div className="mt-6 pt-6 border-t border-gray-800 flex items-center justify-between flex-wrap gap-4">
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Project Outcome:</span>
+                        <div className="flex gap-3">
+                          {bid.outcome_tag === 'Won' ? (
+                            <span className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-xl font-bold text-sm border border-emerald-500/40"><Trophy size={16}/> Deal Won</span>
+                          ) : bid.outcome_tag === 'Lost' ? (
+                            <span className="flex items-center gap-2 bg-red-500/20 text-red-400 px-4 py-2 rounded-xl font-bold text-sm border border-red-500/40"><XCircle size={16}/> Deal Lost</span>
+                          ) : (
+                            <>
+                              <button onClick={() => handleSetOutcome(bid._id, 'Won')} className="click-flash active:scale-95 flex items-center gap-2 bg-gray-900 border border-gray-700 hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-400 text-gray-400 transition-all px-4 py-2 rounded-xl font-bold text-sm">
+                                <Trophy size={16}/> Mark as Won
+                              </button>
+                              <button onClick={() => handleSetOutcome(bid._id, 'Lost')} className="click-flash active:scale-95 flex items-center gap-2 bg-gray-900 border border-gray-700 hover:border-red-500/50 hover:bg-red-500/10 hover:text-red-400 text-gray-400 transition-all px-4 py-2 rounded-xl font-bold text-sm">
+                                <XCircle size={16}/> Mark as Lost
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
                     </div>
                   );
                 })}
