@@ -586,6 +586,21 @@ function Dashboard() {
               
               <h3 className="text-xl font-extrabold text-white mb-6 flex items-center gap-3"><Send className="text-blue-400" size={24}/> Target Specifications</h3>
               
+              {}
+              <div className="flex flex-wrap gap-2 mb-3">
+                <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest flex items-center mr-1">Smart Snippets:</span>
+                {['[Client Name: ]', '[Budget: $]', '[Deadline: ]', '[Tech Stack: ]', '[Competitor: ]'].map((snippet, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => setLeadText(prev => prev + (prev.length > 0 && !prev.endsWith(' ') ? ' ' : '') + snippet)}
+                    className="text-[10px] font-bold bg-blue-900/20 text-blue-300 border border-blue-800/50 px-2.5 py-1 rounded-full hover:bg-blue-800/40 hover:text-blue-200 transition-all btn-press flex items-center gap-1"
+                    title={`Inject ${snippet}`}
+                  >
+                    <Zap size={10} /> {snippet}
+                  </button>
+                ))}
+              </div>
+
               <div className="relative mb-6">
                 <textarea 
                   value={leadText} onChange={(e) => setLeadText(e.target.value)}
