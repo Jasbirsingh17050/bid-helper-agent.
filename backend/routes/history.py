@@ -40,17 +40,19 @@ async def add_revision(
     current_user: dict = Depends(get_current_user)
 ):
     """Save a new edit/revision for a specific bid."""
-    try:
-        obj_id = ObjectId(generation_id)
-    except:
-        raise HTTPException(status_code=400, detail="Invalid generation ID format")
-
     new_rev = Revision(content=revision_data.content, action_type=revision_data.action_type)
     rev_dict = new_rev.model_dump(mode='json')
 
     try:
+        # Robust query: Support both new MongoDB ObjectIds and older string IDs
+        try:
+            obj_id = ObjectId(generation_id)
+            query = {"$or": [{"_id": obj_id}, {"_id": generation_id}], "user_id": str(current_user["_id"])}
+        except Exception:
+            query = {"_id": generation_id, "user_id": str(current_user["_id"])}
+
         result = await generations_collection.update_one(
-            {"_id": obj_id, "user_id": str(current_user["_id"])},
+            query,
             {"$push": {"revisions": rev_dict}}
         )
 
@@ -58,6 +60,8 @@ async def add_revision(
             raise HTTPException(status_code=404, detail="Bid not found or access denied.")
 
         return {"message": "Revision saved successfully!", "revision": rev_dict}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Database error in add_revision: {e}")
         raise HTTPException(status_code=500, detail="Could not save revision.")
@@ -69,24 +73,31 @@ async def update_outcome(
     current_user: dict = Depends(get_current_user)
 ):
     """Tag a bid as Won or Lost."""
-    try:
-        obj_id = ObjectId(generation_id)
-    except:
-        raise HTTPException(status_code=400, detail="Invalid generation ID format")
-
-    if outcome_data.outcome not in ["Won", "Lost"]:
+    # Normalize outcome to handle uppercase/lowercase edge cases
+    normalized_outcome = outcome_data.outcome.strip().capitalize()
+    
+    if normalized_outcome not in ["Won", "Lost"]:
         raise HTTPException(status_code=400, detail="Invalid outcome tag. Use 'Won' or 'Lost'.")
 
     try:
+        # Robust query: Support both new MongoDB ObjectIds and older string IDs
+        try:
+            obj_id = ObjectId(generation_id)
+            query = {"$or": [{"_id": obj_id}, {"_id": generation_id}], "user_id": str(current_user["_id"])}
+        except Exception:
+            query = {"_id": generation_id, "user_id": str(current_user["_id"])}
+
         result = await generations_collection.update_one(
-            {"_id": obj_id, "user_id": str(current_user["_id"])},
-            {"$set": {"outcome_tag": outcome_data.outcome}}
+            query,
+            {"$set": {"outcome_tag": normalized_outcome}}
         )
 
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Bid not found or access denied.")
 
-        return {"message": f"Bid marked as {outcome_data.outcome}!"}
+        return {"message": f"Bid marked as {normalized_outcome}!"}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Database error in update_outcome: {e}")
         raise HTTPException(status_code=500, detail="Could not update outcome.")
