@@ -21,6 +21,18 @@ const GlobalStyles = () => (
       background: rgba(255, 255, 255, 0.4); opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
     }
     .click-flash:active::after { opacity: 1; transition: opacity 0s; }
+    
+    /* --- NEW: NEON GLOW HOVER EFFECTS --- */
+    .glow-text-hover { transition: all 0.3s ease; cursor: pointer; }
+    .glow-text-hover:hover {
+      text-shadow: 0 0 10px rgba(56, 189, 248, 0.8), 0 0 20px rgba(56, 189, 248, 0.4);
+      color: #38bdf8 !important; 
+    }
+    .glow-icon-hover { transition: all 0.3s ease; cursor: pointer; }
+    .glow-icon-hover:hover {
+      filter: drop-shadow(0 0 8px rgba(56,189,248,0.9));
+      color: #38bdf8 !important;
+    }
   `}</style>
 );
 
@@ -358,8 +370,8 @@ function Dashboard() {
   };
 
   const TabButton = ({ id, icon: Icon, label }) => (
-    <button onClick={() => setActiveTab(id)} className={`click-flash active:scale-[0.95] flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all duration-200 ${activeTab === id ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_20px_rgba(34,211,238,0.15)]' : 'text-gray-500 border border-transparent hover:bg-gray-800/50 hover:text-gray-300'}`}>
-      <Icon size={18} className={activeTab === id ? 'text-cyan-400' : 'text-gray-500'} /> {label}
+    <button onClick={() => setActiveTab(id)} className={`click-flash active:scale-[0.95] flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all duration-200 ${activeTab === id ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_20px_rgba(34,211,238,0.15)]' : 'text-gray-500 border border-transparent hover:bg-gray-800/50 hover:text-gray-300 group'}`}>
+      <Icon size={18} className={`glow-icon-hover ${activeTab === id ? 'text-cyan-400' : 'text-gray-500 group-hover:text-cyan-400'}`} /> <span className="glow-text-hover">{label}</span>
     </button>
   );
 
@@ -371,8 +383,8 @@ function Dashboard() {
       <GlobalStyles /><AmbientBackground /><Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: '' })} />
       <nav className="bg-gray-900/40 backdrop-blur-2xl sticky top-0 z-40 border-b border-gray-800 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
         <div className="max-w-7xl mx-auto px-6 h-24 flex justify-between items-center relative z-10">
-          <div className="flex items-center gap-4"><div className="bg-gradient-to-tr from-cyan-500 to-indigo-500 p-2.5 rounded-xl shadow-[0_0_20px_rgba(56,189,248,0.3)]"><Zap className="text-white w-6 h-6" /></div><h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">Bid Helper Agent</h1></div>
-          <div className="flex items-center gap-6"><div className="flex items-center gap-3 bg-gray-950/50 px-5 py-2.5 rounded-xl border border-gray-800 shadow-inner"><span className="text-sm font-medium text-gray-400">Agent: <strong className="text-gray-100">{username}</strong></span>{role === 'admin' && <span className="bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs px-2.5 py-1 rounded-lg font-bold">Admin</span>}</div><button onClick={handleLogout} className="click-flash active:scale-95 text-gray-500 hover:text-red-400 transition-colors bg-gray-900/50 p-3 rounded-xl border border-gray-800"><LogOut size={18} /></button></div>
+          <div className="flex items-center gap-4"><div className="bg-gradient-to-tr from-cyan-500 to-indigo-500 p-2.5 rounded-xl shadow-[0_0_20px_rgba(56,189,248,0.3)]"><Zap className="text-white w-6 h-6" /></div><h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 glow-text-hover">Bid Helper Agent</h1></div>
+          <div className="flex items-center gap-6"><div className="flex items-center gap-3 bg-gray-950/50 px-5 py-2.5 rounded-xl border border-gray-800 shadow-inner"><span className="text-sm font-medium text-gray-400">Agent: <strong className="text-gray-100 glow-text-hover">{username}</strong></span>{role === 'admin' && <span className="bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs px-2.5 py-1 rounded-lg font-bold glow-text-hover">Admin</span>}</div><button onClick={handleLogout} className="click-flash active:scale-95 text-gray-500 hover:text-red-400 transition-colors bg-gray-900/50 p-3 rounded-xl border border-gray-800 glow-icon-hover"><LogOut size={18} /></button></div>
         </div>
       </nav>
 
