@@ -173,6 +173,7 @@ function Dashboard() {
   const [leadText, setLeadText] = useState('');
   const [tone, setTone] = useState('Professional');
   const [size, setSize] = useState('Medium');
+  const [projectCategory, setProjectCategory] = useState('General / Other');
   const [generatedBid, setGeneratedBid] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentGenerationId, setCurrentGenerationId] = useState(null);
@@ -211,7 +212,7 @@ function Dashboard() {
     try {
       const response = await axios.post(
         'https://bid-helper-agent.onrender.com/generate/bid', 
-        { lead_text: leadText, tone: tone, size: size },
+        { lead_text: leadText, tone: tone, size: size, project_category: projectCategory },
         { headers: { Authorization: `Bearer ${token}` } } 
       );
       setGeneratedBid(response.data.content);
@@ -399,7 +400,18 @@ function Dashboard() {
                 placeholder="Paste the Upwork/Freelancer job description here..."
                 className="w-full h-48 p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm"
               />
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Project Category</label>
+                  <select value={projectCategory} onChange={(e) => setProjectCategory(e.target.value)} className="w-full p-2 border rounded-md text-sm">
+                    <option>AI / Machine Learning</option>
+                    <option>Python / Backend</option>
+                    <option>Frontend / Web UI</option>
+                    <option>Full Stack Development</option>
+                    <option>Mobile App Development</option>
+                    <option>General / Other</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tone</label>
                   <select value={tone} onChange={(e) => setTone(e.target.value)} className="w-full p-2 border rounded-md text-sm">
@@ -490,6 +502,7 @@ function Dashboard() {
                         <div className="flex gap-2">
                           <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">Tone: {bid.tone}</span>
                           <span className="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded">Size: {bid.size}</span>
+                          <span className="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded">Category: {bid.project_category || 'General / Other'}</span>
                         </div>
                         <span className="text-xs text-gray-500">
                           {new Date(bid.created_at).toLocaleString()}
