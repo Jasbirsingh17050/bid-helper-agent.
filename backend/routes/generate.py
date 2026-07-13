@@ -69,12 +69,34 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
         search_query = request.lead_text[:60].replace('\n', ' ')
         web_context = perform_web_search(search_query)
 
-        # 4. Create the System Prompt
+        # 4. Enforce Strict Size and Structure Rules
+        size_prompt = ""
+        if request.size == "Short":
+            size_prompt = (
+                "SIZE REQUIREMENT: Small / Short Bid (100 - 300 Words STRICT). "
+                "Target Scope: Simple, transactional proposals. Ideal Length: Under 1.5 minutes read time. "
+                "Core Structure: 1. Direct hook showing you read the requirements. 2. Brief statement of your immediate technical solution. 3. A single call-to-action (e.g., 'Let's hop on a 5-minute call')."
+            )
+        elif request.size == "Medium":
+            size_prompt = (
+                "SIZE REQUIREMENT: Medium Bid (400 - 800 Words STRICT). "
+                "Target Scope: Standard milestones or fixed-price projects. Ideal Length: Around 2 to 4 minutes read time. "
+                "Core Structure: 1. Executive summary of current pain points. 2. Defined phase breakdowns (e.g., Week 1 Discovery, Week 2 Build). 3. Explicit timeline, milestones, and high-level risk mitigations."
+            )
+        else:
+            size_prompt = (
+                "SIZE REQUIREMENT: Large Bid (1,200 - 3,000+ Words STRICT). "
+                "Target Scope: Enterprise RFPs, corporate service contracts. Ideal Length: Detailed formal reading. "
+                "Core Structure: 1. Rigorous technical architecture layout. 2. Team qualifications/case studies. 3. Legal terms, strict SLAs, and change-management protocols."
+            )
+
+        # 5. Create the System Prompt
         system_prompt = (
             f"You are an expert sales engineer and proposal writer specializing in {request.project_category} projects. "
             "Write a highly convincing, professional bid for the following job lead.\n\n"
-            f"Please write it in a '{request.tone}' tone, keep the length '{request.size}', "
-            f"and tailor your language, technologies, and approach specifically for a {request.project_category} project.\n\n"
+            f"Please write it in a '{request.tone}' tone, and perfectly follow this size constraint:\n"
+            f"{size_prompt}\n\n"
+            f"Tailor your language, technologies, and approach specifically for a {request.project_category} project.\n\n"
             "Here is live internet research regarding the client/topic to make your bid more specific and impressive:\n"
             f"{web_context}\n\n"
             "Use the following successful past projects from our company as evidence of our expertise. "
@@ -84,7 +106,7 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             f"{banned_phrases_instruction}"
         )
 
-        # 5. Call Groq API
+        # 6. Call Groq API
         chat_completion = await groq_client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},

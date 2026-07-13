@@ -412,10 +412,10 @@ function Dashboard() {
 
         {/* --- TAB: GENERATE BID --- */}
         {activeTab === 'generate' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[75vh]">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[80vh] min-h-[600px]">
             
             {/* Left Column: Input */}
-            <div className="bg-gray-900/50 backdrop-blur-2xl p-8 rounded-[2rem] shadow-2xl border border-gray-700/50 flex flex-col h-full">
+            <div className="bg-gray-900/50 backdrop-blur-2xl p-8 rounded-[2rem] shadow-2xl border border-gray-700/50 flex flex-col h-full min-h-0">
               <h3 className="text-xl font-extrabold text-white mb-6 flex items-center gap-3">
                 <Send className="text-cyan-400" size={24}/> Target Specifications
               </h3>
@@ -471,7 +471,7 @@ function Dashboard() {
 
               {generatedBid ? (
                 <>
-                  <div id="markdown-render-content" className="w-full flex-grow p-8 bg-gray-950/50 border border-gray-800 rounded-2xl overflow-y-auto shadow-inner 
+                  <div id="markdown-render-content" className="w-full flex-grow min-h-0 p-8 bg-gray-950/50 border border-gray-800 rounded-2xl overflow-y-auto shadow-inner break-words whitespace-pre-wrap
                   [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full 
                   [&>h1]:text-2xl [&>h1]:font-extrabold [&>h1]:mb-4 [&>h1]:text-white [&>h1]:tracking-tight
                   [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-3 [&>h2]:text-gray-100 
