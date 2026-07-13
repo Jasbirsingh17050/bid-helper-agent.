@@ -10,7 +10,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import { 
   Eye, EyeOff, Users, UserCheck, UserX, 
   Trophy, XCircle, TrendingUp, Target, Award,
-  CheckCircle2, Copy, FileText, Download, Wand2, Sparkles, Send, BookOpen, Settings, Zap, Activity, LogOut, Mail, UserCircle
+  CheckCircle2, Copy, FileText, Download, Wand2, Sparkles, Send, BookOpen, Settings, Zap, Activity, LogOut, Mail, UserCircle, Mic, MicOff
 } from 'lucide-react';
 
 // --- PREMIUM NEON GLOBAL STYLES ---
@@ -230,6 +230,9 @@ function Dashboard() {
   const [isSavingRevision, setIsSavingRevision] = useState(false);
   const [isRevising, setIsRevising] = useState(false);
   
+  // Voice Input States
+  const [isListening, setIsListening] = useState(false);
+  
   // Custom Company Name for the PDF Export
   const [companyName, setCompanyName] = useState(localStorage.getItem('companyName') || 'Acme Agency');
 
@@ -251,6 +254,49 @@ function Dashboard() {
   useEffect(() => { if (activeTab === 'settings' && role === 'admin') loadSettings(); }, [activeTab]);
 
   const handleLogout = () => { localStorage.clear(); navigate('/'); };
+
+  // Voice to Text Toggle Logic
+  const toggleListening = () => {
+    if (isListening) {
+      if (window.speechRecognitionInstance) {
+        window.speechRecognitionInstance.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      showToast("Speech-to-Text is only supported in Chrome/Edge browsers.", "error");
+      return;
+    }
+    
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    window.speechRecognitionInstance = recognition;
+    
+    recognition.onstart = () => {
+      setIsListening(true);
+      showToast("Microphone active! Start speaking...", "success");
+    };
+    
+    recognition.onend = () => setIsListening(false);
+    
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript + ' ';
+        }
+      }
+      if (finalTranscript) {
+         setLeadText((prev) => prev + finalTranscript);
+      }
+    };
+    
+    recognition.start();
+  };
 
   const handleGenerate = async () => {
     if (!leadText.trim()) return showToast("Please enter a job lead!", "error");
@@ -540,11 +586,26 @@ function Dashboard() {
               
               <h3 className="text-xl font-extrabold text-white mb-6 flex items-center gap-3"><Send className="text-blue-400" size={24}/> Target Specifications</h3>
               
-              <textarea 
-                value={leadText} onChange={(e) => setLeadText(e.target.value)}
-                placeholder="Paste the raw client request, job description, or RFP here..."
-                className="w-full h-56 p-5 bg-gray-950/50 border border-gray-800 rounded-2xl mb-6 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 text-gray-200 resize-none text-sm leading-relaxed outline-none shadow-inner transition-all glow-hover"
-              />
+              <div className="relative mb-6">
+                <textarea 
+                  value={leadText} onChange={(e) => setLeadText(e.target.value)}
+                  placeholder="Paste the raw client request, job description, or RFP here..."
+                  className="w-full h-56 p-5 bg-gray-950/50 border border-gray-800 rounded-2xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 text-gray-200 resize-none text-sm leading-relaxed outline-none shadow-inner transition-all glow-hover pr-14"
+                />
+                
+                {/* MICROPHONE BUTTON */}
+                <button 
+                  onClick={toggleListening}
+                  title="Speak your prompt"
+                  className={`absolute bottom-4 right-4 p-3 rounded-full shadow-lg transition-all duration-300 ${
+                    isListening 
+                      ? 'bg-red-500 text-white animate-pulse shadow-red-500/50' 
+                      : 'bg-gray-800/80 text-gray-400 hover:text-blue-400 hover:bg-gray-700 border border-gray-700'
+                  }`}
+                >
+                  {isListening ? <Mic size={20} /> : <MicOff size={20} />}
+                </button>
+              </div>
               
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <div>
@@ -733,7 +794,7 @@ function Dashboard() {
               </div>
             </div>
 
-            {/* --- NEW RECHARTS BLOOMBERG-STYLE GRAPH --- */}
+            {/* --- RECHARTS BLOOMBERG-STYLE GRAPH --- */}
             {chartData.length > 0 && (
               <div className="h-72 w-full bg-gray-900/50 backdrop-blur-md border border-gray-800 p-6 rounded-2xl shadow-lg mb-10">
                 <h4 className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2"><TrendingUp size={14}/> Proposal Velocity & Conversions</h4>
@@ -950,7 +1011,6 @@ function Dashboard() {
   );
 }
 
-// --- 3. MAIN APP ROUTER ---
 export default function App() {
   const clientId = "742455468037-15nrh5etl1r764tu66958coe6437rs4m.apps.googleusercontent.com";
   return (
