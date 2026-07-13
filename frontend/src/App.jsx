@@ -237,19 +237,54 @@ function Dashboard() {
     } catch (error) { showToast("Failed to save revision.", "error"); } finally { setIsSavingRevision(false); }
   };
 
-  const handleDownload = () => {
+  // NEW: Microsoft Word Export
+  const handleWordExport = () => {
     if (!generatedBid) return;
-    const blob = new Blob([generatedBid], { type: 'text/plain' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `Bid.txt`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); showToast("File downloaded!", "success");
+    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Proposal</title></head><body>";
+    const footer = "</body></html>";
+    const sourceHTML = header + document.getElementById('markdown-render-content').innerHTML + footer;
+    const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
+    const fileDownload = document.createElement("a");
+    document.body.appendChild(fileDownload);
+    fileDownload.href = source;
+    fileDownload.download = `Proposal_${new Date().toISOString().split('T')[0]}.doc`;
+    fileDownload.click();
+    document.body.removeChild(fileDownload);
+    showToast("Word Document downloaded!", "success");
   };
 
   const handleCopy = () => { if (!generatedBid) return; navigator.clipboard.writeText(generatedBid); showToast("Copied to clipboard!", "success"); };
 
+  // UPGRADED: PDF Export with Company Logo Header
   const handlePdfExport = () => {
     if (!generatedBid) return;
     const printWindow = window.open('', '', 'height=800,width=800');
-    printWindow.document.write('<html><head><title>Generated Proposal</title><style>body{font-family:sans-serif;line-height:1.6;padding:40px;max-width:800px;margin:0 auto;}</style></head><body>');
-    printWindow.document.write(document.getElementById('markdown-render-content').innerHTML);
-    printWindow.document.write('</body></html>'); printWindow.document.close(); printWindow.focus(); setTimeout(() => { printWindow.print(); }, 250);
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Generated Proposal</title>
+          <style>
+            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; padding: 40px; max-width: 800px; margin: 0 auto; color: #333; }
+            .header { display: flex; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; }
+            .logo { width: 50px; height: 50px; background: #0ea5e9; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold; margin-right: 15px; }
+            h1, h2, h3 { color: #111; margin-top: 24px; }
+            p { margin-bottom: 16px; }
+            ul { margin-bottom: 16px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="logo">🚀</div>
+            <div>
+              <h1 style="margin:0; font-size: 24px; color: #0ea5e9;">Your Company Name</h1>
+              <p style="margin:0; color: #666; font-weight: bold;">Official Project Proposal</p>
+            </div>
+          </div>
+          ${document.getElementById('markdown-render-content').innerHTML}
+        </body>
+      </html>
+    `);
+    printWindow.document.close(); printWindow.focus(); setTimeout(() => { printWindow.print(); }, 250);
   };
 
   const handleUpload = async () => {
@@ -398,6 +433,7 @@ function Dashboard() {
                 <h3 className="text-xl font-extrabold text-white flex items-center gap-2"><CheckCircle2 className="text-emerald-400" size={24}/> Output Matrix</h3>
                 <div className="flex gap-2">
                   <button onClick={handlePdfExport} disabled={!generatedBid} className="click-flash active:scale-95 flex items-center gap-2 text-xs font-bold bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/20 text-indigo-300 px-3 py-2 rounded-xl disabled:opacity-30"><Printer size={16}/> PDF</button>
+                  <button onClick={handleWordExport} disabled={!generatedBid} className="click-flash active:scale-95 flex items-center gap-2 text-xs font-bold bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 text-blue-300 px-3 py-2 rounded-xl disabled:opacity-30"><Download size={16}/> Word (.doc)</button>
                   <button onClick={handleCopy} disabled={!generatedBid} className="click-flash active:scale-95 flex items-center gap-2 text-xs font-bold bg-gray-950/50 border border-gray-800 hover:bg-gray-800 text-gray-300 px-3 py-2 rounded-xl disabled:opacity-30"><Copy size={16}/> Copy</button>
                 </div>
               </div>
