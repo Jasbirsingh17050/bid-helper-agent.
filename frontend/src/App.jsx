@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import ReactMarkdown from 'react-markdown';
@@ -9,7 +9,7 @@ import { saveAs } from 'file-saver';
 import { 
   Eye, EyeOff, Users, UserCheck, UserX, 
   Trophy, XCircle, TrendingUp, Target, Award,
-  CheckCircle2, Copy, FileText, Download, Wand2, Sparkles, Send, BookOpen, Settings, Zap, ArrowRight, Activity
+  CheckCircle2, Copy, FileText, Download, Wand2, Sparkles, Send, BookOpen, Settings, Zap, ArrowRight, Activity, LogOut, Mail, UserCircle
 } from 'lucide-react';
 
 // --- PREMIUM NEON GLOBAL STYLES ---
@@ -64,7 +64,7 @@ function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // <-- EYE BUTTON STATE
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('admin');
   const [error, setError] = useState('');
   const [toast, setToast] = useState({ message: '', type: '' });
@@ -153,7 +153,6 @@ function Auth() {
             <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} 
                    className="w-full p-3 bg-gray-950/50 border border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white transition-all outline-none pr-10" required minLength="6" />
             
-            {/* --- NEW EYE BUTTON --- */}
             <button 
               type="button" 
               onClick={() => setShowPassword(!showPassword)} 
@@ -260,7 +259,6 @@ function Dashboard() {
       );
       setGeneratedBid(response.data.content); 
       
-      // SAFETY CATCH: If backend is slow/fails, fallback to 85 so the ring never breaks
       const score = response.data.confidence_score;
       setConfidenceScore(score !== undefined && score !== null ? score : 85); 
       
@@ -459,11 +457,15 @@ function Dashboard() {
           
           <div className="flex items-center gap-6">
             <div className="hidden md:flex items-center gap-3 bg-gray-900/50 px-4 py-2 rounded-full border border-gray-800 shadow-inner glow-hover">
-              <span className="text-xs text-gray-400 font-medium">Agent: <strong className="text-gray-200">{username}</strong></span>
-              {role === 'admin' && <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] px-2.5 py-0.5 rounded-full font-bold tracking-widest uppercase">Admin</span>}
+              <UserCircle className="text-gray-400" size={20} />
+              <div className="flex flex-col">
+                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mb-0.5">Authorized Agent</span>
+                <span className="text-sm text-gray-200 font-bold leading-none">{username}</span>
+              </div>
+              {role === 'admin' && <span className="ml-2 bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] px-2.5 py-0.5 rounded-full font-bold tracking-widest uppercase">Admin</span>}
             </div>
-            <button onClick={handleLogout} className="p-2.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all btn-press">
-              <ArrowRight size={20} />
+            <button onClick={handleLogout} title="Secure Logout" className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-full border border-transparent hover:border-red-500/20 transition-all btn-press">
+              <LogOut size={16} /> Disconnect
             </button>
           </div>
         </div>
@@ -634,6 +636,7 @@ function Dashboard() {
                       <button onClick={() => handleAiRevise("Make this much shorter and more concise.")} disabled={isRevising} className="bg-purple-900/20 hover:bg-purple-800/30 border border-purple-800/50 text-purple-300 text-xs font-bold py-2.5 px-4 rounded-xl disabled:opacity-50 transition-all btn-press flex items-center gap-2"><Wand2 size={12}/> Compact</button>
                       <button onClick={() => handleAiRevise("Make the tone more aggressive, confident, and persuasive.")} disabled={isRevising} className="bg-purple-900/20 hover:bg-purple-800/30 border border-purple-800/50 text-purple-300 text-xs font-bold py-2.5 px-4 rounded-xl disabled:opacity-50 transition-all btn-press flex items-center gap-2"><Wand2 size={12}/> Aggressive</button>
                       <button onClick={() => handleAiRevise("Fix any grammar mistakes and polish the language.")} disabled={isRevising} className="bg-emerald-900/20 hover:bg-emerald-800/30 border border-emerald-800/50 text-emerald-300 text-xs font-bold py-2.5 px-4 rounded-xl disabled:opacity-50 transition-all btn-press flex items-center gap-2"><Wand2 size={12}/> Polish</button>
+                      <button onClick={() => handleAiRevise("Summarize this entire proposal into a short, punchy, 3-sentence email cover letter that I can send to the client with the PDF attached.")} disabled={isRevising} className="bg-blue-900/20 hover:bg-blue-800/30 border border-blue-800/50 text-blue-300 text-xs font-bold py-2.5 px-4 rounded-xl disabled:opacity-50 transition-all btn-press flex items-center gap-2"><Mail size={12}/> Draft Email</button>
                     </div>
                   </div>
 
