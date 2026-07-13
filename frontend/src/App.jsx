@@ -831,6 +831,25 @@ function Dashboard() {
                     </div>
                   </div>
 
+                  <div className="p-4 bg-gray-950/50 border border-gray-800 rounded-2xl">
+                    <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest block mb-3">Manual Override</span>
+                    <div className="flex flex-col gap-3">
+                      <textarea
+                        value={manualAddition}
+                        onChange={(e) => setManualAddition(e.target.value)}
+                        placeholder="Type any custom paragraphs, pricing details, or notes to append manually..."
+                        className="w-full p-3 bg-gray-900/30 border border-gray-800 rounded-xl text-sm text-gray-300 outline-none focus:border-blue-500/50 transition-all resize-none min-h-[60px] custom-scrollbar"
+                      />
+                      <button
+                        onClick={handleManualAppend}
+                        disabled={!manualAddition.trim()}
+                        className="self-end bg-gray-800/80 hover:bg-gray-700 border border-gray-700 text-gray-300 text-xs font-bold py-2 px-4 rounded-xl disabled:opacity-50 transition-all btn-press flex items-center gap-2"
+                      >
+                        <Plus size={14}/> Append to Bottom
+                      </button>
+                    </div>
+                  </div>
+
                   <button 
                     onClick={handleSaveRevision} disabled={isSavingRevision}
                     className="w-full bg-emerald-900/20 border border-emerald-800/50 text-emerald-400 font-extrabold py-3.5 px-4 rounded-xl hover:bg-emerald-800/30 hover:border-emerald-500/50 disabled:opacity-50 transition-all flex justify-center items-center gap-2 btn-press"
