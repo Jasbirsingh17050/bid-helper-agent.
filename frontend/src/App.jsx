@@ -7,7 +7,8 @@ import {
   Sparkles, Copy, Download, Save, Send, LogOut, 
   LayoutDashboard, History, Database, Settings as SettingsIcon, 
   CheckCircle2, AlertCircle, Zap, Printer, Clock, FileText,
-  Eye, EyeOff, Users, UserCheck, UserX
+  Eye, EyeOff, Users, UserCheck, UserX,
+  Target, Trophy, XCircle, TrendingUp // <-- THESE WERE MISSING!
 } from 'lucide-react';
 
 const GlobalStyles = () => (
@@ -50,7 +51,7 @@ function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // NEW: State for Eye button
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('admin');
   const [error, setError] = useState('');
   const [toast, setToast] = useState({ message: '', type: '' });
@@ -97,7 +98,6 @@ function Auth() {
         </h2>
         {error && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-xl mb-6 text-sm flex items-center gap-3"><AlertCircle size={18}/>{error}</div>}
         
-        {}
         <form onSubmit={handleAuth} className="space-y-5">
           <div>
             <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Username</label>
@@ -186,7 +186,7 @@ function Dashboard() {
   const [settings, setSettings] = useState({ banned_phrases: '', confidential_keywords: '' });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
-  // NEW: Users States (This was causing the white screen!)
+  // Users States
   const [usersList, setUsersList] = useState([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
@@ -195,7 +195,7 @@ function Dashboard() {
   useEffect(() => {
     if (activeTab === 'settings' && role === 'admin') loadSettings();
     if (activeTab === 'history') loadHistory();
-    if (activeTab === 'users' && role === 'admin') loadUsers(); // NEW: Load users when tab is clicked
+    if (activeTab === 'users' && role === 'admin') loadUsers(); 
   }, [activeTab]);
 
   const handleLogout = () => { localStorage.clear(); navigate('/'); };
@@ -269,6 +269,20 @@ function Dashboard() {
     } catch (error) { showToast("Failed to load history.", "error"); } finally { setIsLoadingHistory(false); }
   };
 
+  // <-- NEW OUTCOME FUNCTION FOR WIN/LOSS TRACKING -->
+  const handleSetOutcome = async (bidId, outcome) => {
+    try {
+      await axios.put(`https://bid-helper-agent.onrender.com/history/${bidId}/outcome`, 
+        { outcome: outcome },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      showToast(`Project marked as ${outcome}!`, "success");
+      loadHistory(); // Refresh the list to update analytics
+    } catch (error) {
+      showToast("Failed to update project outcome.", "error");
+    }
+  };
+
   const loadSettings = async () => {
     try {
       const response = await axios.get('https://bid-helper-agent.onrender.com/settings/', { headers: { Authorization: `Bearer ${token}` } });
@@ -289,7 +303,6 @@ function Dashboard() {
     } catch (error) { showToast("Error saving settings.", "error"); } finally { setIsSavingSettings(false); }
   };
 
-  // NEW: User Management Functions
   const loadUsers = async () => {
     setIsLoadingUsers(true);
     try {
@@ -305,7 +318,7 @@ function Dashboard() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       showToast(`User ${targetUsername} status updated.`, "success");
-      loadUsers(); // Refresh the list!
+      loadUsers(); 
     } catch (error) { showToast(error.response?.data?.detail || "Failed to update user status.", "error"); }
   };
 
@@ -426,12 +439,12 @@ function Dashboard() {
           </div>
         )}
 
-        {}
+        {/* --- TAB: HISTORY --- */}
         {activeTab === 'history' && (
           <div className="bg-gray-900/50 backdrop-blur-2xl p-10 rounded-[2rem] shadow-2xl border border-gray-700/50">
             <div className="flex items-center gap-4 mb-10"><History className="text-cyan-400 w-10 h-10"/><h3 className="text-3xl font-extrabold text-white tracking-tight">Intelligence Logs & Analytics</h3></div>
             
-            {/* NEW: ANALYTICS DASHBOARD */}
+            {/* ANALYTICS DASHBOARD */}
             {!isLoadingHistory && historyBids.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-10">
                 <div className="bg-gray-950/50 border border-gray-800 p-5 rounded-2xl flex flex-col items-center justify-center shadow-inner">
@@ -492,7 +505,7 @@ function Dashboard() {
                         </div>
                       )}
                       
-                      {/* NEW: WIN/LOSS BUTTONS */}
+                      {/* WIN/LOSS BUTTONS */}
                       <div className="mt-6 pt-6 border-t border-gray-800 flex items-center justify-between flex-wrap gap-4">
                         <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Project Outcome:</span>
                         <div className="flex gap-3">
@@ -521,7 +534,7 @@ function Dashboard() {
           </div>
         )}
 
-        {}
+        {/* --- TAB: USERS (ADMIN) --- */}
         {activeTab === 'users' && role === 'admin' && (
           <div className="bg-gray-900/50 backdrop-blur-2xl p-10 rounded-[2rem] shadow-2xl border border-gray-700/50 max-w-4xl mx-auto">
              <div className="flex items-center gap-4 mb-10"><Users className="text-cyan-400 w-10 h-10"/><h3 className="text-3xl font-extrabold text-white tracking-tight">Team Access Matrix</h3></div>
@@ -569,7 +582,7 @@ function Dashboard() {
           </div>
         )}
 
-        {}
+        {/* --- TAB: KNOWLEDGE BASE (ADMIN) --- */}
         {activeTab === 'kb' && role === 'admin' && (
           <div className="bg-gray-900/50 backdrop-blur-2xl p-10 rounded-[2rem] shadow-2xl border border-gray-700/50 max-w-2xl mx-auto">
             <div className="flex items-center gap-4 mb-6"><Database className="text-cyan-400 w-10 h-10"/><h3 className="text-3xl font-extrabold text-white tracking-tight">Data Matrix</h3></div>
@@ -584,6 +597,7 @@ function Dashboard() {
           </div>
         )}
 
+        {/* --- TAB: SETTINGS (ADMIN) --- */}
         {activeTab === 'settings' && role === 'admin' && (
           <div className="bg-gray-900/50 backdrop-blur-2xl p-10 rounded-[2rem] shadow-2xl border border-gray-700/50 max-w-2xl mx-auto">
              <div className="flex items-center gap-4 mb-10"><SettingsIcon className="text-cyan-400 w-10 h-10"/><h3 className="text-3xl font-extrabold text-white tracking-tight">System Protocols</h3></div>
