@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import ReactMarkdown from 'react-markdown';
@@ -10,7 +10,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import { 
   Eye, EyeOff, Users, UserCheck, UserX, 
   Trophy, XCircle, TrendingUp, Target, Award,
-  CheckCircle2, Copy, FileText, Download, Wand2, Sparkles, Send, BookOpen, Settings, Zap, Activity, LogOut, Mail, UserCircle, Mic, MicOff
+  CheckCircle2, Copy, FileText, Download, Wand2, Sparkles, Send, BookOpen, Settings, Zap, Activity, LogOut, Mail, UserCircle, Mic, MicOff, Globe
 } from 'lucide-react';
 
 // --- PREMIUM NEON GLOBAL STYLES ---
@@ -56,6 +56,57 @@ function Toast({ message, type, onClose }) {
     <div className={`fixed bottom-6 right-6 ${isError ? 'bg-red-500/90' : 'bg-emerald-500/90'} backdrop-blur-md border ${isError ? 'border-red-400' : 'border-emerald-400'} text-white px-6 py-4 rounded-2xl shadow-[0_0_30px_rgba(0,0,0,0.3)] flex items-center gap-4 z-50 transition-all duration-300 transform translate-y-0`}>
       <span className="font-bold tracking-wide">{message}</span>
       <button onClick={onClose} className="text-white hover:text-gray-200 font-bold text-xl leading-none">&times;</button>
+    </div>
+  );
+}
+
+// --- PUBLIC CLIENT PROPOSAL VIEWER ---
+function PublicProposal() {
+  const { id } = useParams();
+  const [proposal, setProposal] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchProposal = async () => {
+      try {
+        const response = await axios.get(`https://bid-helper-agent.onrender.com/history/public/${id}`);
+        setProposal(response.data);
+      } catch (err) {
+        setError("Proposal not found or access has expired.");
+      }
+    };
+    fetchProposal();
+  }, [id]);
+
+  if (error) return <div className="min-h-screen flex items-center justify-center bg-[#020617] text-white"><p className="text-red-400 font-bold">{error}</p></div>;
+  if (!proposal) return <div className="min-h-screen flex items-center justify-center bg-[#020617] text-white"><Sparkles className="animate-spin text-blue-500 mr-3" size={24}/> <span className="font-bold tracking-widest uppercase text-sm text-gray-400">Loading Strategic Proposal...</span></div>;
+
+  return (
+    <div className="min-h-screen bg-[#020617] text-gray-200 py-12 px-6 font-sans bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]">
+      <style>{globalStyles}</style>
+      <div className="max-w-4xl mx-auto bg-gray-900/80 backdrop-blur-2xl border border-gray-800 p-12 rounded-[3rem] shadow-[0_0_50px_rgba(0,0,0,0.5)] relative overflow-hidden">
+        
+        {/* Glow Effects */}
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-80"></div>
+        <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-500 rounded-full blur-[100px] opacity-10 pointer-events-none"></div>
+
+        <div className="flex justify-between items-end mb-10 border-b border-gray-800/50 pb-8">
+          <div>
+            <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 tracking-tight mb-2">Strategic Proposal</h1>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+              <Zap size={14} className="text-blue-500"/> {proposal.project_category || 'Custom Solution'}
+            </p>
+          </div>
+          <div className="text-right">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Prepared On</span>
+            <p className="text-sm font-medium text-gray-300">{new Date(proposal.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          </div>
+        </div>
+        
+        <div className="prose prose-invert max-w-none text-sm leading-loose prose-headings:text-blue-50 prose-a:text-blue-400 prose-strong:text-blue-300">
+          <ReactMarkdown>{proposal.content}</ReactMarkdown>
+        </div>
+      </div>
     </div>
   );
 }
@@ -359,6 +410,15 @@ function Dashboard() {
   const handleCompanyNameChange = (e) => {
     setCompanyName(e.target.value);
     localStorage.setItem('companyName', e.target.value);
+  };
+
+  const handleCopyLink = () => {
+    if (!currentGenerationId) {
+      return showToast("Please save the configuration to logs first to generate a link!", "error");
+    }
+    const link = `${window.location.origin}/proposal/${currentGenerationId}`;
+    navigator.clipboard.writeText(link);
+    showToast("Client Link Copied!", "success");
   };
 
   const handlePdfExport = () => {
@@ -723,6 +783,9 @@ function Dashboard() {
                     className="w-32 bg-gray-950/50 border border-gray-800 rounded-xl text-xs px-3 py-2 text-gray-300 outline-none focus:border-blue-500 transition-all shadow-inner"
                     title="This name will appear on your exported PDF"
                   />
+                  <button onClick={handleCopyLink} disabled={!generatedBid || !currentGenerationId} className="flex items-center gap-2 text-xs font-bold bg-purple-900/20 hover:bg-purple-800/30 text-purple-300 border border-purple-800/50 px-3 py-2 rounded-xl disabled:opacity-30 transition-all btn-press glow-hover">
+                    <Globe size={14}/> Share Link
+                  </button>
                   <button onClick={handlePdfExport} disabled={!generatedBid} className="flex items-center gap-2 text-xs font-bold bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 border border-gray-700 px-3 py-2 rounded-xl disabled:opacity-30 transition-all btn-press glow-hover">
                     <FileText size={14}/> PDF
                   </button>
