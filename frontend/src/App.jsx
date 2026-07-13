@@ -222,6 +222,7 @@ function Dashboard() {
   const [customWords, setCustomWords] = useState('');
   const [projectCategory, setProjectCategory] = useState('General / Other');
   const [targetAudience, setTargetAudience] = useState('General Manager / CEO');
+  const [clientObjection, setClientObjection] = useState('');
   const [generatedBid, setGeneratedBid] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [confidenceScore, setConfidenceScore] = useState(null);
@@ -254,7 +255,7 @@ function Dashboard() {
     setIsGenerating(true); setGeneratedBid(''); setCurrentGenerationId(null); setConfidenceScore(null);
     try {
       const response = await axios.post('https://bid-helper-agent.onrender.com/generate/bid', 
-        { lead_text: leadText, tone, size, project_category: projectCategory, word_count_target: customWords, target_audience: targetAudience },
+        { lead_text: leadText, tone, size, project_category: projectCategory, word_count_target: customWords, target_audience: targetAudience, client_objection: clientObjection },
         { headers: { Authorization: `Bearer ${token}` } } 
       );
       setGeneratedBid(response.data.content); 
@@ -542,6 +543,15 @@ function Dashboard() {
                     className="w-full p-3 bg-blue-950/20 border border-blue-500/30 rounded-xl text-sm text-blue-200 outline-none focus:ring-1 focus:ring-blue-400 transition-all glow-hover placeholder-blue-700"
                   />
                 </div>
+              </div>
+
+              <div className="mb-8">
+                <label className="block text-[10px] font-extrabold text-purple-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                  <Target size={14} /> Known Client Objection / Worry (Optional)
+                </label>
+                <input type="text" value={clientObjection} onChange={(e) => setClientObjection(e.target.value)} placeholder="e.g., 'They think our price is too high' or 'They have a tight 2-week deadline'"
+                  className="w-full p-4 bg-purple-950/10 border border-purple-500/30 rounded-xl text-sm text-purple-200 outline-none focus:ring-1 focus:ring-purple-400 transition-all glow-hover placeholder-purple-800/60 shadow-inner"
+                />
               </div>
 
               <button 

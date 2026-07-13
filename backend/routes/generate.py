@@ -22,6 +22,7 @@ class BidRequest(BaseModel):
     project_category: str = "General / Other"
     word_count_target: Optional[str] = ""
     target_audience: str = "General Manager / CEO"
+    client_objection: Optional[str] = ""
 
 class ReviseRequest(BaseModel):
     generation_id: str
@@ -109,6 +110,14 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
                 "Core Structure: 1. Rigorous technical architecture layout. 2. Team qualifications/case studies. 3. Legal terms, SLAs, and change-management protocols."
             )
 
+        objection_instruction = ""
+        if request.client_objection and request.client_objection.strip():
+            objection_instruction = (
+                f"\n\nCRITICAL SALES STRATEGY (OVERCOME OBJECTION): The client has a specific worry: '{request.client_objection}'. "
+                "You MUST dedicate a specific paragraph in this proposal to preemptively and professionally dismantling this concern. "
+                "Use logic, past experience, and strategic reassurance to prove why this won't be an issue."
+            )
+
         system_prompt = (
             f"You are an expert sales engineer and proposal writer specializing in {request.project_category} projects. "
             "Write a highly convincing, professional bid for the following job lead.\n\n"
@@ -116,6 +125,7 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             "Tailor your vocabulary, technical depth, and value proposition to appeal directly to this persona's priorities.\n\n"
             f"Please write it in a '{request.tone}' tone.\n\n"
             f"{size_prompt}\n\n"
+            f"{objection_instruction}\n\n"
             f"Tailor your language, technologies, and approach specifically for a {request.project_category} project.\n\n"
             "Here is live internet research regarding the client/topic to make your bid more specific and impressive:\n"
             f"{web_context}\n\n"
@@ -160,6 +170,7 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             size=request.size,
             project_category=request.project_category,
             target_audience=request.target_audience,
+            client_objection=request.client_objection,
             revisions=[Revision(content=generated_text, action_type="original")],
             retrieved_kb_ids=retrieved_ids,
             confidence_score=confidence_score
