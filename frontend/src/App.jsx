@@ -9,7 +9,7 @@ import { saveAs } from 'file-saver';
 import { 
   Eye, EyeOff, Users, UserCheck, UserX, 
   Trophy, XCircle, TrendingUp, Target, Award,
-  CheckCircle2, Copy, FileText, Download, Wand2, Sparkles, Send, BookOpen, Settings, Zap, ArrowRight, Activity, LogOut, Mail, UserCircle
+  CheckCircle2, Copy, FileText, Download, Wand2, Sparkles, Send, BookOpen, Settings, Zap, Activity, LogOut, Mail, UserCircle
 } from 'lucide-react';
 
 // --- PREMIUM NEON GLOBAL STYLES ---
@@ -251,10 +251,21 @@ function Dashboard() {
   /* --- GENERATION WITH SAFETY SCORE FALLBACK --- */
   const handleGenerate = async () => {
     if (!leadText.trim()) return showToast("Please enter a job lead!", "error");
-    setIsGenerating(true); setGeneratedBid(''); setCurrentGenerationId(null); setConfidenceScore(null);
+    setIsGenerating(true); 
+    setGeneratedBid(''); 
+    setCurrentGenerationId(null); 
+    setConfidenceScore(null);
     try {
       const response = await axios.post('https://bid-helper-agent.onrender.com/generate/bid', 
-        { lead_text: leadText, tone, size, project_category: projectCategory, word_count_target: customWords, target_audience: targetAudience, client_objection: clientObjection },
+        { 
+          lead_text: leadText, 
+          tone: tone, 
+          size: size, 
+          project_category: projectCategory, 
+          word_count_target: customWords, 
+          target_audience: targetAudience, 
+          client_objection: clientObjection 
+        },
         { headers: { Authorization: `Bearer ${token}` } } 
       );
       setGeneratedBid(response.data.content); 
