@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import html2pdf from 'html2pdf.js';
 import { Document, Packer, Paragraph, TextRun } from 'docx';
 import { saveAs } from 'file-saver';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { 
   Eye, EyeOff, Users, UserCheck, UserX, 
   Trophy, XCircle, TrendingUp, Target, Award,
@@ -228,6 +229,9 @@ function Dashboard() {
   const [currentGenerationId, setCurrentGenerationId] = useState(null);
   const [isSavingRevision, setIsSavingRevision] = useState(false);
   const [isRevising, setIsRevising] = useState(false);
+  
+  // Custom Company Name for the PDF Export
+  const [companyName, setCompanyName] = useState(localStorage.getItem('companyName') || 'Acme Agency');
 
   // History & Analytics States
   const [historyBids, setHistoryBids] = useState([]);
@@ -248,7 +252,6 @@ function Dashboard() {
 
   const handleLogout = () => { localStorage.clear(); navigate('/'); };
 
-  /* --- GENERATION WITH SAFETY SCORE FALLBACK --- */
   const handleGenerate = async () => {
     if (!leadText.trim()) return showToast("Please enter a job lead!", "error");
     setIsGenerating(true); 
@@ -307,22 +310,44 @@ function Dashboard() {
     } catch (error) { showToast("Failed to save.", "error"); } finally { setIsSavingRevision(false); }
   };
 
-  /* --- ADVANCED EXPORTS --- */
+  const handleCompanyNameChange = (e) => {
+    setCompanyName(e.target.value);
+    localStorage.setItem('companyName', e.target.value);
+  };
+
   const handlePdfExport = () => {
     if (!generatedBid) return;
     const printElement = document.createElement('div');
+    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    
     printElement.innerHTML = `
-      <div style="font-family: 'Inter', sans-serif; color: #1e293b; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); padding: 20px; border-radius: 8px; color: white; margin-bottom: 20px;">
-          <h1 style="margin: 0; font-size: 24px;">Your Company Name</h1>
-          <p style="margin: 5px 0 0 0; opacity: 0.9;">Professional Proposal</p>
+      <style>
+        h1, h2, h3 { color: #0f172a; margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 700; }
+        p { margin-bottom: 1.2em; line-height: 1.7; }
+        ul { padding-left: 20px; margin-bottom: 1.2em; }
+        li { margin-bottom: 0.5em; }
+        strong { color: #1e293b; font-weight: bold; }
+      </style>
+      <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #334155; padding: 40px; font-size: 14px;">
+        <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
+          <div>
+            <h1 style="margin: 0; font-size: 28px; font-weight: 800; color: #1e3a8a; letter-spacing: -0.5px;">${companyName}</h1>
+            <p style="margin: 5px 0 0 0; color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;">Strategic Proposal</p>
+          </div>
+          <div style="text-align: right; color: #64748b; font-size: 12px;">
+            <p style="margin: 0; font-weight: 500;">Prepared: ${dateStr}</p>
+          </div>
         </div>
-        <div style="line-height: 1.6;">${document.getElementById('markdown-content').innerHTML}</div>
+        <div>${document.getElementById('markdown-content').innerHTML}</div>
       </div>
     `;
+    
     html2pdf().set({
-      margin: 10, filename: 'Premium_Proposal.pdf', image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      margin: [10, 0, 10, 0], 
+      filename: `${companyName.replace(/\s+/g, '_')}_Proposal.pdf`, 
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 }, 
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     }).from(printElement).save();
     showToast("Premium PDF Exported!", "success");
   };
@@ -352,7 +377,6 @@ function Dashboard() {
     showToast("Copied to clipboard!", "success");
   };
 
-  /* --- DATA FETCHING & UPDATES --- */
   const loadHistory = async () => {
     setIsLoadingHistory(true);
     try {
@@ -435,7 +459,6 @@ function Dashboard() {
     } catch (error) { showToast(error.response?.data?.detail || "Upload failed.", "error"); } finally { setIsUploading(false); }
   };
 
-  // --- DERIVED METRICS ---
   const wordCount = generatedBid ? generatedBid.trim().split(/\s+/).length : 0;
   const readTime = Math.ceil(wordCount / 200) || 1;
 
@@ -443,6 +466,16 @@ function Dashboard() {
   const wonBids = historyBids.filter(b => b.outcome_tag === 'Won').length;
   const lostBids = historyBids.filter(b => b.outcome_tag === 'Lost').length;
   const winRate = totalBids > 0 && (wonBids + lostBids) > 0 ? Math.round((wonBids / (wonBids + lostBids)) * 100) : 0;
+
+  // Transform History Data for Recharts
+  const chartDataMap = {};
+  [...historyBids].reverse().forEach(bid => {
+      const date = new Date(bid.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (!chartDataMap[date]) chartDataMap[date] = { date, Total: 0, Won: 0 };
+      chartDataMap[date].Total += 1;
+      if (bid.outcome_tag === 'Won') chartDataMap[date].Won += 1;
+  });
+  const chartData = Object.values(chartDataMap);
 
   const getTabClass = (tabName) => `
     flex items-center gap-2 px-5 py-3 rounded-full text-sm font-bold transition-all duration-300 glow-hover btn-press
@@ -605,7 +638,15 @@ function Dashboard() {
                   )}
                 </div>
                 
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
+                  <input 
+                    type="text" 
+                    value={companyName} 
+                    onChange={handleCompanyNameChange}
+                    placeholder="Your Agency Name"
+                    className="w-32 bg-gray-950/50 border border-gray-800 rounded-xl text-xs px-3 py-2 text-gray-300 outline-none focus:border-blue-500 transition-all shadow-inner"
+                    title="This name will appear on your exported PDF"
+                  />
                   <button onClick={handlePdfExport} disabled={!generatedBid} className="flex items-center gap-2 text-xs font-bold bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 border border-gray-700 px-3 py-2 rounded-xl disabled:opacity-30 transition-all btn-press glow-hover">
                     <FileText size={14}/> PDF
                   </button>
@@ -669,7 +710,7 @@ function Dashboard() {
             <h3 className="text-2xl font-extrabold text-white flex items-center gap-3 mb-8"><Activity className="text-blue-400"/> Intelligence Logs & Analytics</h3>
             
             {/* ANALYTICS DASHBOARD */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <div className="bg-gray-900/50 backdrop-blur-md border border-gray-800 p-6 rounded-2xl shadow-lg flex flex-col items-center justify-center glow-hover">
                 <Target className="text-blue-500 mb-2" size={28}/>
                 <span className="text-3xl font-extrabold text-white">{totalBids}</span>
@@ -691,6 +732,33 @@ function Dashboard() {
                 <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">Win Rate</span>
               </div>
             </div>
+
+            {/* --- NEW RECHARTS BLOOMBERG-STYLE GRAPH --- */}
+            {chartData.length > 0 && (
+              <div className="h-72 w-full bg-gray-900/50 backdrop-blur-md border border-gray-800 p-6 rounded-2xl shadow-lg mb-10">
+                <h4 className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2"><TrendingUp size={14}/> Proposal Velocity & Conversions</h4>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorWon" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                    <XAxis dataKey="date" stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <RechartsTooltip contentStyle={{ backgroundColor: '#030712', borderColor: '#1f2937', borderRadius: '12px' }} itemStyle={{ fontSize: '12px', fontWeight: 'bold' }} labelStyle={{ fontSize: '10px', color: '#9ca3af', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }} />
+                    <Area type="monotone" dataKey="Total" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" />
+                    <Area type="monotone" dataKey="Won" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorWon)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
 
             {isLoadingHistory ? (
               <div className="text-center py-10 text-gray-500 font-bold tracking-widest uppercase text-sm animate-pulse">Retrieving Logs...</div>
