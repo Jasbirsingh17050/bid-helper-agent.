@@ -12,7 +12,6 @@
   "dependencies": {
     "@react-oauth/google": "^0.13.5",
     "@tailwindcss/vite": "^4.3.2",
-    "@uiw/react-md-editor": "^4.1.1",
     "autoprefixer": "^10.5.2",
     "axios": "^1.18.1",
     "docx": "^9.7.1",
@@ -20,10 +19,11 @@
     "html2pdf.js": "^0.14.0",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^1.24.0",
+    "marked": "^18.0.6",
     "postcss": "^8.5.16",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-markdown": "^10.1.0",
+    "react-quill": "^2.0.0",
     "react-router-dom": "^7.18.1",
     "recharts": "^3.9.2",
     "tailwindcss": "^4.3.2"

@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
-import ReactMarkdown from 'react-markdown';
 import html2pdf from 'html2pdf.js';
 import { Document, Packer, Paragraph, TextRun } from 'docx';
 import { saveAs } from 'file-saver';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
-import MDEditor from '@uiw/react-md-editor';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { marked } from 'marked';
 import { 
   Eye, EyeOff, Users, UserCheck, UserX, 
   Trophy, XCircle, TrendingUp, Target, Award,
@@ -35,18 +36,40 @@ const globalStyles = `
   .btn-press { transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
   .btn-press:active { transform: scale(0.96); background-color: rgba(255,255,255,0.1); }
 
-  /* Premium Markdown Rendering */
-  .prose h1, .prose h2, .prose h3 { color: #f8fafc; font-weight: 800; margin-top: 1.5em; margin-bottom: 0.5em; letter-spacing: -0.02em; }
-  .prose p { margin-bottom: 1.2em; line-height: 1.7; color: #cbd5e1; }
-  .prose ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1.2em; color: #cbd5e1; }
-  .prose li { margin-bottom: 0.5em; }
-  .prose strong { color: #38bdf8; font-weight: 700; }
-  
   /* Custom Scrollbar for dark mode */
   ::-webkit-scrollbar { width: 8px; }
   ::-webkit-scrollbar-track { background: #0f172a; border-radius: 4px; }
   ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+  /* React Quill Dark Mode Customization */
+  .ql-toolbar.ql-snow {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid #1e293b !important;
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+    padding: 12px;
+  }
+  .ql-container.ql-snow {
+    border: 1px solid #1e293b !important;
+    border-top: none !important;
+    border-bottom-left-radius: 1rem;
+    border-bottom-right-radius: 1rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: #cbd5e1;
+    background: rgba(2, 6, 23, 0.3);
+  }
+  .ql-editor { min-height: 300px; padding: 20px; line-height: 1.7; }
+  .ql-editor h1, .ql-editor h2, .ql-editor h3 { color: #f8fafc; font-weight: 800; margin-top: 1em; margin-bottom: 0.5em; }
+  .ql-editor p { margin-bottom: 1em; }
+  .ql-editor strong { color: #38bdf8; }
+  .ql-snow .ql-stroke { stroke: #94a3b8; }
+  .ql-snow .ql-fill, .ql-snow .ql-stroke.ql-fill { fill: #94a3b8; }
+  .ql-snow .ql-picker { color: #94a3b8; }
+  .ql-snow .ql-picker-options { background: #0f172a; border-color: #334155; }
+  .ql-snow .ql-tooltip { background: #0f172a; border-color: #334155; color: #f8fafc; box-shadow: 0 0 15px rgba(56, 189, 248, 0.2); }
+  .ql-snow .ql-tooltip input[type=text] { background: #1e293b; color: #f8fafc; border-color: #334155; }
 `;
 
 // --- PREMIUM TOAST COMPONENT ---
@@ -104,9 +127,10 @@ function PublicProposal() {
           </div>
         </div>
         
-        <div className="prose prose-invert max-w-none text-sm leading-loose prose-headings:text-blue-50 prose-a:text-blue-400 prose-strong:text-blue-300" data-color-mode="dark">
-          <MDEditor.Markdown source={proposal.content} />
-        </div>
+        <div 
+          className="prose prose-invert max-w-none text-sm leading-loose prose-headings:text-blue-50 prose-a:text-blue-400 prose-strong:text-blue-300"
+          dangerouslySetInnerHTML={{ __html: marked.parse(proposal.content || '') }}
+        />
       </div>
     </div>
   );
@@ -275,8 +299,11 @@ function Dashboard() {
   const [projectCategory, setProjectCategory] = useState('General / Other');
   const [targetAudience, setTargetAudience] = useState('General Manager / CEO');
   const [clientObjection, setClientObjection] = useState('');
+  
+  // HTML Editor State
   const [generatedBid, setGeneratedBid] = useState('');
   const [manualAddition, setManualAddition] = useState('');
+  
   const [isGenerating, setIsGenerating] = useState(false);
   const [confidenceScore, setConfidenceScore] = useState(null);
   const [currentGenerationId, setCurrentGenerationId] = useState(null);
@@ -302,6 +329,17 @@ function Dashboard() {
   const [isUploading, setIsUploading] = useState(false);
   const [settings, setSettings] = useState({ banned_phrases: '', confidential_keywords: '' });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  // Toolbar options for React Quill
+  const modules = {
+    toolbar: [
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'header': [1, 2, 3, false] }],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      ['link'],
+      ['clean']
+    ],
+  };
 
   useEffect(() => { if (!token) navigate('/'); }, [token, navigate]);
   useEffect(() => { if (activeTab === 'settings' && role === 'admin') loadSettings(); }, [activeTab]);
@@ -372,7 +410,10 @@ function Dashboard() {
         },
         { headers: { Authorization: `Bearer ${token}` } } 
       );
-      setGeneratedBid(response.data.content); 
+      
+      // Convert Markdown response directly to HTML for Quill
+      const htmlContent = marked.parse(response.data.content);
+      setGeneratedBid(htmlContent); 
       
       const score = response.data.confidence_score;
       setConfidenceScore(score !== undefined && score !== null ? score : 85); 
@@ -394,14 +435,17 @@ function Dashboard() {
         { generation_id: currentGenerationId, current_content: generatedBid, instruction },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setGeneratedBid(response.data.content);
+      // Parse the revised markdown into HTML
+      const htmlContent = marked.parse(response.data.content);
+      setGeneratedBid(htmlContent);
       showToast(`AI Magic Applied!`, "success");
     } catch (error) { showToast("Error applying AI revision.", "error"); } finally { setIsRevising(false); }
   };
 
   const handleManualAppend = () => {
     if (!manualAddition) return;
-    setGeneratedBid(prev => prev + '\n\n' + manualAddition);
+    // Append the custom text as a new paragraph in the HTML
+    setGeneratedBid(prev => prev + `<p>${manualAddition}</p>`);
     setManualAddition('');
     showToast("Custom note appended successfully!", "success");
   };
@@ -411,6 +455,7 @@ function Dashboard() {
     setIsSavingRevision(true);
     try {
       await axios.post(`https://bid-helper-agent.onrender.com/history/${currentGenerationId}/revise`,
+        // We now save the HTML content directly
         { content: generatedBid, action_type: 'manual_edit' },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -441,7 +486,7 @@ function Dashboard() {
       <style>
         h1, h2, h3 { color: #0f172a; margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 700; }
         p { margin-bottom: 1.2em; line-height: 1.7; }
-        ul { padding-left: 20px; margin-bottom: 1.2em; }
+        ul, ol { padding-left: 20px; margin-bottom: 1.2em; }
         li { margin-bottom: 0.5em; }
         strong { color: #1e293b; font-weight: bold; }
       </style>
@@ -455,7 +500,7 @@ function Dashboard() {
             <p style="margin: 0; font-weight: 500;">Prepared: ${dateStr}</p>
           </div>
         </div>
-        <div>${ReactMarkdown({children: generatedBid})}</div>
+        <div>${generatedBid}</div>
       </div>
     `;
     
@@ -472,11 +517,16 @@ function Dashboard() {
   const handleWordExport = async () => {
     if (!generatedBid) return;
     try {
+      // Strip HTML tags for the raw text Word document
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = generatedBid;
+      const plainText = tempDiv.innerText || tempDiv.textContent || "";
+
       const doc = new Document({
         sections: [{
           properties: {},
-          children: generatedBid.split('\n').map(line => new Paragraph({
-            children: [new TextRun({ text: line.replace(/\*\*/g, ''), bold: line.includes('**') })]
+          children: plainText.split('\n').map(line => new Paragraph({
+            children: [new TextRun({ text: line })]
           }))
         }]
       });
@@ -490,7 +540,9 @@ function Dashboard() {
 
   const handleCopy = () => {
     if (!generatedBid) return;
-    navigator.clipboard.writeText(generatedBid);
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = generatedBid;
+    navigator.clipboard.writeText(tempDiv.innerText || tempDiv.textContent);
     showToast("Copied to clipboard!", "success");
   };
 
@@ -576,7 +628,9 @@ function Dashboard() {
     } catch (error) { showToast(error.response?.data?.detail || "Upload failed.", "error"); } finally { setIsUploading(false); }
   };
 
-  const wordCount = generatedBid ? generatedBid.trim().split(/\s+/).length : 0;
+  // Strip HTML to count words roughly
+  const rawTextForCount = generatedBid ? generatedBid.replace(/<[^>]+>/g, ' ').trim() : '';
+  const wordCount = rawTextForCount ? rawTextForCount.split(/\s+/).length : 0;
   const readTime = Math.ceil(wordCount / 200) || 1;
 
   const totalBids = historyBids.length;
@@ -810,9 +864,15 @@ function Dashboard() {
               </div>
 
               {generatedBid ? (
-                /* --- RICH TEXT EDITOR (MDEditor) IN DARK MODE --- */
-                <div className="flex-grow bg-gray-950/50 border border-gray-800 rounded-2xl overflow-hidden mb-4 shadow-inner custom-scrollbar" data-color-mode="dark">
-                  <MDEditor value={generatedBid} onChange={setGeneratedBid} height="100%" preview="edit" className="border-none h-full min-h-[300px]" />
+                /* --- TRUE WYSIWYG EDITOR (React Quill) --- */
+                <div className="flex-grow rounded-2xl overflow-hidden mb-4 custom-scrollbar">
+                  <ReactQuill 
+                    theme="snow" 
+                    value={generatedBid} 
+                    onChange={setGeneratedBid}
+                    modules={modules}
+                    className="h-full"
+                  />
                 </div>
               ) : (
                 <div className="w-full flex-grow border-2 border-dashed border-gray-800 rounded-2xl flex flex-col items-center justify-center text-gray-600 bg-gray-950/20 min-h-[300px] mb-4">
@@ -950,9 +1010,10 @@ function Dashboard() {
                       {latestRevision && (
                         <div className="mb-6">
                           <h4 className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500"/> Final Output</h4>
-                          <div className="w-full text-sm text-gray-300 bg-gray-950/50 border border-gray-800 rounded-xl p-5 max-h-48 overflow-y-auto custom-scrollbar">
-                            <ReactMarkdown className="prose prose-invert max-w-none prose-sm">{latestRevision.content}</ReactMarkdown>
-                          </div>
+                          <div 
+                            className="w-full text-sm text-gray-300 bg-gray-950/50 border border-gray-800 rounded-xl p-5 max-h-48 overflow-y-auto custom-scrollbar prose prose-invert"
+                            dangerouslySetInnerHTML={{ __html: marked.parse(latestRevision.content || '') }}
+                          />
                         </div>
                       )}
 
