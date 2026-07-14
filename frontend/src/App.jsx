@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { GoogleOAuthProvider, GoogleLogin } from 'https://esm.sh/@react-oauth/google';
-import html2pdf from 'https://esm.sh/html2pdf.js';
-import { Document, Packer, Paragraph, TextRun } from 'https://esm.sh/docx';
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+import html2pdf from 'html2pdf.js';
+import { Document, Packer, Paragraph, TextRun } from 'docx';
 import { saveAs } from 'file-saver';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
-import ReactQuill from 'https://esm.sh/react-quill?external=react,react-dom';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import { marked } from 'marked';
 import { 
   Eye, EyeOff, Users, UserCheck, UserX, 
-  Trophy, XCircle, TrendingUp, Target, Award,
+  Trophy, XCircle, TrendingUp, Target,
   CheckCircle2, Copy, FileText, Download, Wand2, Sparkles, Send, BookOpen, Settings, Zap, Activity, LogOut, Mail, UserCircle, Mic, MicOff, Globe, Plus
 } from 'lucide-react';
 
 // --- PREMIUM NEON GLOBAL STYLES ---
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-  @import url('https://unpkg.com/react-quill@2.0.0/dist/quill.snow.css');
   
   body {
     background-color: #020617; /* Deep Space Slate */
@@ -59,8 +59,20 @@ const globalStyles = `
   .ql-snow .ql-picker { color: #94a3b8 !important; }
   .ql-snow .ql-picker-options { background-color: #1f2937 !important; border-color: #374151 !important; }
   .ql-editor.ql-blank::before { color: #475569 !important; font-style: normal !important; }
+  
+  /* Restored Rich Text Styles */
   .ql-editor p { margin-bottom: 1rem; }
-  .ql-editor strong { color: #38bdf8; font-weight: bold; }
+  .ql-editor strong, .ql-editor b { color: #38bdf8; font-weight: bold; }
+  .ql-editor em, .ql-editor i { font-style: italic; color: #93c5fd; }
+  .ql-editor u { text-decoration: underline; }
+  .ql-editor s { text-decoration: line-through; opacity: 0.6; }
+  .ql-editor h1, .ql-editor h2, .ql-editor h3 { color: #f8fafc; font-weight: 800; margin-top: 1.5em; margin-bottom: 0.5em; }
+  .ql-editor h1 { font-size: 1.75em; }
+  .ql-editor h2 { font-size: 1.5em; }
+  .ql-editor h3 { font-size: 1.25em; }
+  .ql-editor ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1rem; }
+  .ql-editor ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1rem; }
+  .ql-editor li { margin-bottom: 0.5em; }
 `;
 
 // --- PREMIUM TOAST COMPONENT ---
@@ -288,7 +300,7 @@ function Dashboard() {
   const [targetAudience, setTargetAudience] = useState('General Manager / CEO');
   const [clientObjection, setClientObjection] = useState('');
   
-  const [generatedBid, setGeneratedBid] = useState(''); // This now stores HTML
+  const [generatedBid, setGeneratedBid] = useState(''); // Stores HTML for Quill Editor
   const [manualAddition, setManualAddition] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [confidenceScore, setConfidenceScore] = useState(null);
@@ -387,7 +399,7 @@ function Dashboard() {
       );
       
       // PARSE THE AI'S MARKDOWN INTO BEAUTIFUL HTML FOR THE EDITOR
-      const htmlFormattedText = marked.parse(response.data.content);
+      const htmlFormattedText = marked.parse(response.data.content, { gfm: true, breaks: true });
       setGeneratedBid(htmlFormattedText); 
       
       const score = response.data.confidence_score;
@@ -417,7 +429,7 @@ function Dashboard() {
       );
       
       // Convert the new revised markdown back to HTML
-      const htmlFormattedText = marked.parse(response.data.content);
+      const htmlFormattedText = marked.parse(response.data.content, { gfm: true, breaks: true });
       setGeneratedBid(htmlFormattedText);
       showToast(`AI Magic Applied!`, "success");
     } catch (error) { showToast("Error applying AI revision.", "error"); } finally { setIsRevising(false); }
