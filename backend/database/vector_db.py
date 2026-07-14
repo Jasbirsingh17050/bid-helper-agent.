@@ -45,7 +45,6 @@ async def upsert_batch_to_qdrant(df, batch_id):
         text_content = generate_project_text(row)
         
         # 2. Generate the embedding using FastEmbed
-        # FastEmbed returns a generator, so we convert to a list and grab the first item
         vector = list(model.embed([text_content]))[0].tolist()
         
         # 3. Prepare metadata payload
@@ -65,6 +64,39 @@ async def upsert_batch_to_qdrant(df, batch_id):
             collection_name=COLLECTION_NAME,
             points=points
         )
+
+# --- NEW: AUTO-LEARNING FEEDBACK LOOP (RLHF) ---
+async def upsert_winning_proposal_to_qdrant(generation_id: str, lead_text: str, proposal_text: str, category: str):
+    """Embeds a successfully won proposal and injects it into the active knowledge base."""
+    # 1. Create a structured text representation of the won project
+    text_content = (
+        f"Project Title: Auto-Learned Won Proposal ({generation_id})\n"
+        f"Client Industry: {category}\n"
+        f"Problem Statement (Client Request): {lead_text}\n\n"
+        f"Winning Solution/Proposal:\n{proposal_text}"
+    )
+    
+    # 2. Generate the embedding using FastEmbed
+    vector = list(model.embed([text_content]))[0].tolist()
+    
+    # 3. Prepare metadata payload specifically for self-learned data
+    payload = {
+        "batch_id": "auto_rlhf_feedback",
+        "project_title": f"Auto-Learned Won Proposal",
+        "client_industry": category,
+        "text_content": text_content,
+        "source": "rlhf_feedback_loop"
+    }
+    
+    # 4. Create a point struct with a guaranteed valid UUID
+    point_id = str(uuid.uuid4())
+    
+    # 5. Inject into Qdrant directly
+    qdrant.upsert(
+        collection_name=COLLECTION_NAME,
+        points=[PointStruct(id=point_id, vector=vector, payload=payload)]
+    )
+    print(f"✅ RLHF Success: Injected won proposal {generation_id} into Knowledge Base!")
 
 async def search_projects(lead_text: str, limit: int = 3):
     """Embeds the lead text and searches Qdrant for the closest matching projects."""

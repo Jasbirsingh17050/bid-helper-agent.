@@ -5,6 +5,7 @@ from bson import ObjectId
 from routes.auth import get_current_user
 from database.db import generations_collection
 from database.models import Revision
+from database.vector_db import upsert_winning_proposal_to_qdrant
 
 logger = logging.getLogger(__name__)
 
@@ -72,28 +73,53 @@ async def update_outcome(
     outcome_data: OutcomeUpdate, 
     current_user: dict = Depends(get_current_user)
 ):
-    """Tag a bid as Won or Lost."""
-    # Normalize outcome to handle uppercase/lowercase edge cases
+    """Tag a bid as Won or Lost, and Auto-Train the AI if Won!"""
     normalized_outcome = outcome_data.outcome.strip().capitalize()
     
     if normalized_outcome not in ["Won", "Lost"]:
         raise HTTPException(status_code=400, detail="Invalid outcome tag. Use 'Won' or 'Lost'.")
 
     try:
-        # Robust query: Support both new MongoDB ObjectIds and older string IDs
         try:
             obj_id = ObjectId(generation_id)
             query = {"$or": [{"_id": obj_id}, {"_id": generation_id}], "user_id": str(current_user["_id"])}
         except Exception:
             query = {"_id": generation_id, "user_id": str(current_user["_id"])}
 
-        result = await generations_collection.update_one(
+        # 1. Fetch the document FIRST so we have the data to train the AI
+        doc = await generations_collection.find_one(query)
+        if not doc:
+            raise HTTPException(status_code=404, detail="Bid not found or access denied.")
+
+        # 2. Update the status in MongoDB
+        await generations_collection.update_one(
             query,
             {"$set": {"outcome_tag": normalized_outcome}}
         )
 
-        if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="Bid not found or access denied.")
+        # 3. AUTO-LEARNING FEEDBACK LOOP (RLHF)
+        if normalized_outcome == "Won":
+            try:
+                lead_text = doc.get("lead_text", "No lead text provided.")
+                category = doc.get("project_category", "General / Other")
+                
+                # Get the absolute final edited version of the proposal
+                revisions = doc.get("revisions", [])
+                if revisions and len(revisions) > 0:
+                    final_proposal = revisions[-1].get("content", "")
+                else:
+                    final_proposal = doc.get("content", "")
+
+                # Inject directly into the vector database!
+                await upsert_winning_proposal_to_qdrant(
+                    generation_id=str(doc["_id"]),
+                    lead_text=lead_text,
+                    proposal_text=final_proposal,
+                    category=category
+                )
+            except Exception as e:
+                logger.error(f"Failed to auto-train vector DB: {e}")
+                # We log the error but don't crash the user's request
 
         return {"message": f"Bid marked as {normalized_outcome}!"}
     except HTTPException:
