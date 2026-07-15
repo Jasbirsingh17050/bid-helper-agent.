@@ -8,7 +8,7 @@ import 'react-quill/dist/quill.snow.css';
 import './index.css';
 import { marked } from 'marked';
 
-// Safely imported icons (removed deprecated ones that might crash Vite)
+// Safely imported icons
 import { 
   Eye, EyeOff, Users, UserCheck, UserX, 
   Trophy, XCircle, TrendingUp, Target, Award,
@@ -36,20 +36,17 @@ const globalStyles = `
   .btn-press { transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
   .btn-press:active { transform: scale(0.96); background-color: rgba(255,255,255,0.1); }
 
-  /* Premium Markdown/HTML Rendering */
   .prose h1, .prose h2, .prose h3 { color: #f8fafc; font-weight: 800; margin-top: 1.5em; margin-bottom: 0.5em; letter-spacing: -0.02em; }
   .prose p { margin-bottom: 1.2em; line-height: 1.7; color: #cbd5e1; }
   .prose ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1.2em; color: #cbd5e1; }
   .prose li { margin-bottom: 0.5em; }
   .prose strong { color: #38bdf8; font-weight: 700; }
   
-  /* Custom Scrollbar for dark mode */
   ::-webkit-scrollbar { width: 8px; }
   ::-webkit-scrollbar-track { background: #0f172a; border-radius: 4px; }
   ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-  /* --- REACT QUILL DARK MODE OVERRIDES --- */
   .quill { display: flex; flex-direction: column; height: 100%; border-radius: 1rem; }
   .ql-toolbar.ql-snow { border: none !important; border-bottom: 1px solid rgba(31, 41, 55, 1) !important; background-color: rgba(17, 24, 39, 0.8) !important; border-radius: 1rem 1rem 0 0; padding: 12px 20px !important; }
   .ql-container.ql-snow { border: none !important; flex-grow: 1; font-size: 14px; font-family: 'Inter', sans-serif; color: #cbd5e1; background-color: rgba(3, 7, 18, 0.3) !important; border-radius: 0 0 1rem 1rem; }
@@ -100,8 +97,6 @@ function PublicProposal() {
     <div className="min-h-screen bg-[#020617] text-gray-200 py-12 px-6 font-sans bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]">
       <style>{globalStyles}</style>
       <div className="max-w-4xl mx-auto bg-gray-900/80 backdrop-blur-2xl border border-gray-800 p-12 rounded-[3rem] shadow-[0_0_50px_rgba(0,0,0,0.5)] relative overflow-hidden">
-        
-        {/* Glow Effects */}
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-80"></div>
         <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-500 rounded-full blur-[100px] opacity-10 pointer-events-none"></div>
 
@@ -126,13 +121,11 @@ function PublicProposal() {
 
 // --- 1. AUTH COMPONENT (SIGN IN & SIGN UP & FORGOT PASSWORD) ---
 function Auth() {
-  const [authMode, setAuthMode] = useState('login'); // 'login', 'signup', 'forgot_request', 'forgot_verify'
-  
+  const [authMode, setAuthMode] = useState('login'); 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [otp, setOtp] = useState('');
-  
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('admin');
   const [error, setError] = useState('');
@@ -176,7 +169,7 @@ function Auth() {
         localStorage.setItem('username', response.data.username);
         navigate('/dashboard');
       } catch (err) {
-        setError(err.response?.data?.detail || "Network Error.");
+        setError(err.response?.data?.detail || "Network Error. Please try again.");
       }
     } else if (authMode === 'signup') {
       try {
@@ -335,7 +328,6 @@ function Auth() {
           </form>
         )}
 
-        {/* Google Login Only Shows on Standard Login/Signup */}
         {(authMode === 'login' || authMode === 'signup') && (
           <>
             <div className="mt-8 flex items-center justify-between opacity-50">
@@ -614,12 +606,9 @@ function Dashboard() {
 
   const handlePdfExport = async () => {
     if (!generatedBid) return;
-    
     showToast("Preparing PDF Export...", "success");
-    
     try {
       await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
-      
       const printElement = document.createElement('div');
       const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
       
@@ -661,9 +650,7 @@ function Dashboard() {
 
   const handleWordExport = async () => {
     if (!generatedBid) return;
-    
     showToast("Preparing Word Export...", "success");
-
     try {
       await loadScript('https://unpkg.com/docx@8.5.0/build/index.js');
       await loadScript('https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js');
@@ -1064,7 +1051,6 @@ function Dashboard() {
               </div>
 
               {generatedBid ? (
-                /* --- TRUE WYSIWYG EDITOR (REACT QUILL) --- */
                 <div className="flex-grow bg-gray-950/50 border border-gray-800 rounded-2xl overflow-hidden mb-4 shadow-inner custom-quill-container">
                   <ReactQuill ref={quillRef} theme="snow" value={generatedBid} onChange={setGeneratedBid} className="h-full min-h-[300px]" />
                 </div>
@@ -1097,7 +1083,6 @@ function Dashboard() {
 
                     <hr className="border-gray-800/50 mb-4" />
                     
-                    {/* MANUAL OVERRIDE (FUSION) */}
                     <div className="flex flex-col gap-2">
                       <h4 className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest flex items-center gap-2"><Plus size={14}/> Manual Override</h4>
                       <div className="flex gap-2">
@@ -1124,7 +1109,6 @@ function Dashboard() {
           <div className="space-y-6">
             <h3 className="text-2xl font-extrabold text-white flex items-center gap-3 mb-8"><Activity className="text-blue-400"/> Intelligence Logs & Analytics</h3>
             
-            {/* ANALYTICS DASHBOARD */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <div className="bg-gray-900/50 backdrop-blur-md border border-gray-800 p-6 rounded-2xl shadow-lg flex flex-col items-center justify-center glow-hover">
                 <Target className="text-blue-500 mb-2" size={28}/>
@@ -1148,7 +1132,6 @@ function Dashboard() {
               </div>
             </div>
 
-            {/* --- RECHARTS BLOOMBERG-STYLE GRAPH --- */}
             {chartData.length > 0 && (
               <div className="h-72 w-full bg-gray-900/50 backdrop-blur-md border border-gray-800 p-6 rounded-2xl shadow-lg mb-10">
                 <h4 className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2"><TrendingUp size={14}/> Proposal Velocity & Conversions</h4>
@@ -1208,7 +1191,6 @@ function Dashboard() {
                         </div>
                       )}
 
-                      {/* --- WIN / LOSS BUTTONS --- */}
                       <div className="flex items-center gap-4 mt-6 pt-6 border-t border-gray-800/50">
                         <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mr-auto">Project Outcome</span>
                         
@@ -1363,7 +1345,6 @@ function Dashboard() {
   );
 }
 
-// Error Boundary Component to catch any UI crashes and prevent the White Screen of Death
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -1394,11 +1375,18 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// Wrap the main app in the Error Boundary
 export default function SafeApp() {
   return (
     <ErrorBoundary>
-      <App />
+      <GoogleOAuthProvider clientId="742455468037-15nrh5etl1r764tu66958coe6437rs4m.apps.googleusercontent.com">
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Auth />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/proposal/:id" element={<PublicProposal />} />
+          </Routes>
+        </BrowserRouter>
+      </GoogleOAuthProvider>
     </ErrorBoundary>
   );
 }
