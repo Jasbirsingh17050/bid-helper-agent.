@@ -30,7 +30,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Tells FastAPI where the client gets the token from
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-# Pydantic Schemas for Request/Response Validation
+# --- Pydantic Schemas ---
 class UserSignUp(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     password: str = Field(..., min_length=6)
@@ -46,7 +46,6 @@ class UserProfileUpdate(BaseModel):
 class UserStatusUpdate(BaseModel):
     is_active: bool
 
-# NEW OTP Schemas
 class ForgotPasswordRequest(BaseModel):
     username: str
 
@@ -55,7 +54,7 @@ class ResetPasswordRequest(BaseModel):
     otp: str
     new_password: str = Field(..., min_length=6)
 
-# Helper Functions
+# --- Helper Functions ---
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
@@ -110,7 +109,6 @@ def send_otp_email(receiver_email: str, otp_code: str):
         return False
 
 # --- Dependency Functions (The "Locks") ---
-
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -118,7 +116,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        # Decode the JWT token to find who is logging in
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
@@ -126,7 +123,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise credentials_exception
     
-    # Find the user in the database
     user = await users_collection.find_one({"username": username})
     if user is None:
         raise credentials_exception
@@ -134,7 +130,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     return user
 
 async def get_current_admin(current_user: dict = Depends(get_current_user)):
-    # Check if the currently logged-in user is an admin
     if current_user.get("role") != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -142,24 +137,19 @@ async def get_current_admin(current_user: dict = Depends(get_current_user)):
         )
     return current_user
 
-# --- Endpoints ---
-
+# ---------------------------------------------------------
+# STANDARD AUTH ENDPOINTS
+# ---------------------------------------------------------
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def signup(user_data: UserSignUp):
-    # 1. Check if user already exists
     existing_user = await users_collection.find_one({"username": user_data.username})
     if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username is already taken."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username is already taken.")
     
-    # 2. Normalize role choice
     role = user_data.role.lower()
     if role not in ["admin", "team"]:
         role = "team"
 
-    # 3. Hash the password and structure the document
     hashed_password = hash_password(user_data.password)
     new_user_doc = {
         "username": user_data.username,
@@ -169,70 +159,42 @@ async def signup(user_data: UserSignUp):
         "created_at": datetime.utcnow()
     }
 
-    # 4. Save directly into MongoDB
     await users_collection.insert_one(new_user_doc)
-    
-    return {
-        "message": "User registered successfully!",
-        "username": user_data.username,
-        "role": role
-    }
+    return {"message": "User registered successfully!", "username": user_data.username, "role": role}
 
 @router.post("/login")
 async def login(credentials: OAuth2PasswordRequestForm = Depends()):
-    # 1. Look up user in MongoDB
     user = await users_collection.find_one({"username": credentials.username})
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password."
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password.")
 
-    # 2. Verify account status
     if not user.get("is_active", True):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="This account has been deactivated by an administrator."
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This account has been deactivated.")
 
-    # 3. Check password hash
     if not verify_password(credentials.password, user["password_hash"]):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password."
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password.")
 
-    # 4. Generate the JWT token
     token_data = {"sub": user["username"], "role": user["role"]}
     access_token = create_access_token(token_data)
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "role": user["role"],
-        "username": user["username"]
-    }
+    return {"access_token": access_token, "token_type": "bearer", "role": user["role"], "username": user["username"]}
 
 @router.post("/google")
 async def google_login(google_data: GoogleToken):
     try:
-        # 1. Verify token with Google
         CLIENT_ID = "742455468037-15nrh5etl1r764tu66958coe6437rs4m.apps.googleusercontent.com"
         idinfo = id_token.verify_oauth2_token(google_data.token, requests.Request(), CLIENT_ID)
         
-        # 2. Extract user info
         email = idinfo['email']
-        username = email.split('@')[0] # e.g. "john.doe" from "john.doe@gmail.com"
+        username = email.split('@')[0] 
         
-        # 3. Check if user exists in our DB
         user = await users_collection.find_one({"username": username})
         
         if not user:
-            # Create a new user automatically
             new_user_doc = {
                 "username": username,
                 "password_hash": "GOOGLE_AUTH_NO_PASSWORD", 
-                "role": "team", # Default role for new Google users
+                "role": "team", 
                 "is_active": True,
                 "created_at": datetime.utcnow(),
                 "email": email
@@ -240,20 +202,13 @@ async def google_login(google_data: GoogleToken):
             await users_collection.insert_one(new_user_doc)
             user = new_user_doc
             
-        # 4. Check if active
         if not user.get("is_active", True):
             raise HTTPException(status_code=403, detail="Account deactivated.")
             
-        # 5. Generate standard JWT token
         token_data = {"sub": user["username"], "role": user["role"]}
         access_token = create_access_token(token_data)
 
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "role": user["role"],
-            "username": user["username"]
-        }
+        return {"access_token": access_token, "token_type": "bearer", "role": user["role"], "username": user["username"]}
         
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid Google token.")
@@ -261,7 +216,6 @@ async def google_login(google_data: GoogleToken):
 # ---------------------------------------------------------
 # ADMIN USER MANAGEMENT ENDPOINTS
 # ---------------------------------------------------------
-
 @router.get("/users")
 async def get_all_users(current_admin: dict = Depends(get_current_admin)):
     cursor = users_collection.find({})
@@ -280,7 +234,6 @@ async def get_all_users(current_admin: dict = Depends(get_current_admin)):
 
 @router.put("/users/{username}/status")
 async def update_user_status(username: str, status_data: UserStatusUpdate, current_admin: dict = Depends(get_current_admin)):
-    # Security Check: Prevent an admin from locking themselves out!
     if username == current_admin["username"]:
         raise HTTPException(status_code=400, detail="You cannot deactivate your own admin account.")
 
@@ -325,17 +278,21 @@ async def update_my_profile(profile_data: UserProfileUpdate, current_user: dict 
     return {"message": "Profile updated successfully!"}
 
 # ---------------------------------------------------------
-# NEW: FORGOT PASSWORD & OTP ENDPOINTS
+# OTP & FORGOT PASSWORD ENDPOINTS
 # ---------------------------------------------------------
 @router.post("/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest):
-    user = await users_collection.find_one({"username": request.request.username})
+    # Allow checking by username or email
+    user = await users_collection.find_one({
+        "$or": [
+            {"username": request.username},
+            {"email": request.username}
+        ]
+    })
     
-    # We return success even if user isn't found for security (prevents hacker enumeration)
     if not user:
         return {"message": "If that account exists, an OTP has been sent."}
 
-    # Find the email to send to. If username is an email, use it. Otherwise use saved email.
     receiver_email = user.get("email")
     if not receiver_email:
         if "@" in user["username"]:
@@ -343,17 +300,14 @@ async def forgot_password(request: ForgotPasswordRequest):
         else:
             raise HTTPException(status_code=400, detail="No email address associated with this username. Please contact an Admin.")
 
-    # Generate 6-digit OTP
     otp_code = str(random.randint(100000, 999999))
     otp_expiry = datetime.utcnow() + timedelta(minutes=15)
 
-    # Save OTP to database temporarily
     await users_collection.update_one(
         {"username": user["username"]},
         {"$set": {"otp_code": otp_code, "otp_expiry": otp_expiry}}
     )
 
-    # Send the email!
     email_sent = send_otp_email(receiver_email, otp_code)
     
     if not email_sent:
@@ -363,7 +317,12 @@ async def forgot_password(request: ForgotPasswordRequest):
 
 @router.post("/reset-password")
 async def reset_password(request: ResetPasswordRequest):
-    user = await users_collection.find_one({"username": request.username})
+    user = await users_collection.find_one({
+        "$or": [
+            {"username": request.username},
+            {"email": request.username}
+        ]
+    })
     
     if not user or "otp_code" not in user:
         raise HTTPException(status_code=400, detail="Invalid OTP or Username.")
@@ -371,11 +330,9 @@ async def reset_password(request: ResetPasswordRequest):
     if user["otp_code"] != request.otp:
         raise HTTPException(status_code=400, detail="Incorrect OTP.")
         
-    # Check if OTP expired
     if datetime.utcnow() > user["otp_expiry"]:
         raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
 
-    # Hash the new password and clear the OTP fields
     hashed_password = hash_password(request.new_password)
     
     await users_collection.update_one(
