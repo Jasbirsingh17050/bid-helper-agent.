@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import './index.css';
 import { marked } from 'marked';
 import { 
   Eye, EyeOff, Users, UserCheck, UserX, 
@@ -312,6 +313,8 @@ function Dashboard() {
   const [isUploading, setIsUploading] = useState(false);
   const [settings, setSettings] = useState({ banned_phrases: '', confidential_keywords: '' });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  const quillRef = useRef(null);
 
   useEffect(() => { if (!token) navigate('/'); }, [token, navigate]);
   useEffect(() => { if (activeTab === 'settings' && role === 'admin') loadSettings(); }, [activeTab]);
@@ -873,7 +876,7 @@ function Dashboard() {
               {generatedBid ? (
                 /* --- TRUE WYSIWYG EDITOR (REACT QUILL) --- */
                 <div className="flex-grow bg-gray-950/50 border border-gray-800 rounded-2xl overflow-hidden mb-4 shadow-inner custom-quill-container">
-                  <ReactQuill theme="snow" value={generatedBid} onChange={setGeneratedBid} className="h-full min-h-[300px]" />
+                  <ReactQuill ref={quillRef} theme="snow" value={generatedBid} onChange={setGeneratedBid} className="h-full min-h-[300px]" />
                 </div>
               ) : (
                 <div className="w-full flex-grow border-2 border-dashed border-gray-800 rounded-2xl flex flex-col items-center justify-center text-gray-600 bg-gray-950/20 min-h-[300px] mb-4">
