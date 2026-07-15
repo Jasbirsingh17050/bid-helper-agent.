@@ -1,21 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import './index.css'; // <--- THIS FORCES TAILWIND TO LOAD
-import './App.css';   // <--- CATCH-ALL FOR EXTRA STYLES
 import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+import { GoogleOAuthProvider, GoogleLogin } from 'https://esm.sh/@react-oauth/google@0.12.1?external=react,react-dom';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import ReactQuill from 'https://esm.sh/react-quill@2.0.0?external=react,react-dom';
 import { marked } from 'marked';
 import { 
   Eye, EyeOff, Users, UserCheck, UserX, 
-  Trophy, XCircle, TrendingUp, Target,
+  Trophy, XCircle, TrendingUp, Target, Award,
   CheckCircle2, Copy, FileText, Download, Wand2, Sparkles, Send, BookOpen, Settings, Zap, Activity, LogOut, Mail, UserCircle, Mic, MicOff, Globe, Plus
 } from 'lucide-react';
 
+// --- PREMIUM NEON GLOBAL STYLES ---
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  @import url('https://unpkg.com/react-quill@2.0.0/dist/quill.snow.css');
   
   body {
     background-color: #020617; /* Deep Space Slate */
@@ -57,20 +56,8 @@ const globalStyles = `
   .ql-snow .ql-picker { color: #94a3b8 !important; }
   .ql-snow .ql-picker-options { background-color: #1f2937 !important; border-color: #374151 !important; }
   .ql-editor.ql-blank::before { color: #475569 !important; font-style: normal !important; }
-  
-  /* Restored Rich Text Styles */
   .ql-editor p { margin-bottom: 1rem; }
-  .ql-editor strong, .ql-editor b { color: #38bdf8; font-weight: bold; }
-  .ql-editor em, .ql-editor i { font-style: italic; color: #93c5fd; }
-  .ql-editor u { text-decoration: underline; }
-  .ql-editor s { text-decoration: line-through; opacity: 0.6; }
-  .ql-editor h1, .ql-editor h2, .ql-editor h3 { color: #f8fafc; font-weight: 800; margin-top: 1.5em; margin-bottom: 0.5em; }
-  .ql-editor h1 { font-size: 1.75em; }
-  .ql-editor h2 { font-size: 1.5em; }
-  .ql-editor h3 { font-size: 1.25em; }
-  .ql-editor ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1rem; }
-  .ql-editor ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1rem; }
-  .ql-editor li { margin-bottom: 0.5em; }
+  .ql-editor strong { color: #38bdf8; font-weight: bold; }
 `;
 
 // --- PREMIUM TOAST COMPONENT ---
@@ -398,7 +385,7 @@ function Dashboard() {
         { headers: { Authorization: `Bearer ${token}` } } 
       );
       
-      const htmlFormattedText = marked.parse(response.data.content, { gfm: true, breaks: true });
+      const htmlFormattedText = marked.parse(response.data.content);
       setGeneratedBid(htmlFormattedText); 
       
       const score = response.data.confidence_score;
