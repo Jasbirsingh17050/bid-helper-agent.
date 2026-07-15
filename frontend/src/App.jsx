@@ -2,16 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
-import html2pdf from 'html2pdf.js';
-import { Document, Packer, Paragraph, TextRun } from 'docx';
-import { saveAs } from 'file-saver';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { marked } from 'marked';
 import { 
   Eye, EyeOff, Users, UserCheck, UserX, 
-  Trophy, XCircle, TrendingUp, Target,
+  Trophy, XCircle, TrendingUp, Target, Award,
   CheckCircle2, Copy, FileText, Download, Wand2, Sparkles, Send, BookOpen, Settings, Zap, Activity, LogOut, Mail, UserCircle, Mic, MicOff, Globe, Plus
 } from 'lucide-react';
 
@@ -59,20 +56,8 @@ const globalStyles = `
   .ql-snow .ql-picker { color: #94a3b8 !important; }
   .ql-snow .ql-picker-options { background-color: #1f2937 !important; border-color: #374151 !important; }
   .ql-editor.ql-blank::before { color: #475569 !important; font-style: normal !important; }
-  
-  /* Restored Rich Text Styles */
   .ql-editor p { margin-bottom: 1rem; }
-  .ql-editor strong, .ql-editor b { color: #38bdf8; font-weight: bold; }
-  .ql-editor em, .ql-editor i { font-style: italic; color: #93c5fd; }
-  .ql-editor u { text-decoration: underline; }
-  .ql-editor s { text-decoration: line-through; opacity: 0.6; }
-  .ql-editor h1, .ql-editor h2, .ql-editor h3 { color: #f8fafc; font-weight: 800; margin-top: 1.5em; margin-bottom: 0.5em; }
-  .ql-editor h1 { font-size: 1.75em; }
-  .ql-editor h2 { font-size: 1.5em; }
-  .ql-editor h3 { font-size: 1.25em; }
-  .ql-editor ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1rem; }
-  .ql-editor ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1rem; }
-  .ql-editor li { margin-bottom: 0.5em; }
+  .ql-editor strong { color: #38bdf8; font-weight: bold; }
 `;
 
 // --- PREMIUM TOAST COMPONENT ---
@@ -399,7 +384,7 @@ function Dashboard() {
       );
       
       // PARSE THE AI'S MARKDOWN INTO BEAUTIFUL HTML FOR THE EDITOR
-      const htmlFormattedText = marked.parse(response.data.content, { gfm: true, breaks: true });
+      const htmlFormattedText = marked.parse(response.data.content);
       setGeneratedBid(htmlFormattedText); 
       
       const score = response.data.confidence_score;
@@ -429,7 +414,7 @@ function Dashboard() {
       );
       
       // Convert the new revised markdown back to HTML
-      const htmlFormattedText = marked.parse(response.data.content, { gfm: true, breaks: true });
+      const htmlFormattedText = marked.parse(response.data.content);
       setGeneratedBid(htmlFormattedText);
       showToast(`AI Magic Applied!`, "success");
     } catch (error) { showToast("Error applying AI revision.", "error"); } finally { setIsRevising(false); }
@@ -468,61 +453,93 @@ function Dashboard() {
     showToast("Client Link Copied!", "success");
   };
 
-  const handlePdfExport = () => {
+  // DYNAMIC SCRIPT LOADER TO BYPASS VERCEL BUILD ERRORS
+  const loadScript = (src) => {
+    return new Promise((resolve, reject) => {
+      if (document.querySelector(`script[src="${src}"]`)) return resolve();
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  };
+
+  const handlePdfExport = async () => {
     if (!generatedBid) return;
-    const printElement = document.createElement('div');
-    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     
-    printElement.innerHTML = `
-      <style>
-        h1, h2, h3 { color: #0f172a; margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 700; }
-        p { margin-bottom: 1.2em; line-height: 1.7; }
-        ul { padding-left: 20px; margin-bottom: 1.2em; }
-        li { margin-bottom: 0.5em; }
-        strong { color: #1e293b; font-weight: bold; }
-      </style>
-      <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #334155; padding: 40px; font-size: 14px;">
-        <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
-          <div>
-            <h1 style="margin: 0; font-size: 28px; font-weight: 800; color: #1e3a8a; letter-spacing: -0.5px;">${companyName}</h1>
-            <p style="margin: 5px 0 0 0; color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;">Strategic Proposal</p>
+    showToast("Preparing PDF Export...", "success");
+    
+    try {
+      // 1. Dynamically load html2pdf ONLY when the user clicks the button
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
+      
+      const printElement = document.createElement('div');
+      const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      
+      printElement.innerHTML = `
+        <style>
+          h1, h2, h3 { color: #0f172a; margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 700; }
+          p { margin-bottom: 1.2em; line-height: 1.7; }
+          ul { padding-left: 20px; margin-bottom: 1.2em; }
+          li { margin-bottom: 0.5em; }
+          strong { color: #1e293b; font-weight: bold; }
+        </style>
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #334155; padding: 40px; font-size: 14px;">
+          <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+              <h1 style="margin: 0; font-size: 28px; font-weight: 800; color: #1e3a8a; letter-spacing: -0.5px;">${companyName}</h1>
+              <p style="margin: 5px 0 0 0; color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;">Strategic Proposal</p>
+            </div>
+            <div style="text-align: right; color: #64748b; font-size: 12px;">
+              <p style="margin: 0; font-weight: 500;">Prepared: ${dateStr}</p>
+            </div>
           </div>
-          <div style="text-align: right; color: #64748b; font-size: 12px;">
-            <p style="margin: 0; font-weight: 500;">Prepared: ${dateStr}</p>
-          </div>
+          <div>${generatedBid}</div>
         </div>
-        <div>${generatedBid}</div>
-      </div>
-    `;
-    
-    html2pdf().set({
-      margin: [10, 0, 10, 0], 
-      filename: `${companyName.replace(/\s+/g, '_')}_Proposal.pdf`, 
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 }, 
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).from(printElement).save();
-    showToast("Premium PDF Exported!", "success");
+      `;
+      
+      // 2. Call the globally loaded library
+      window.html2pdf().set({
+        margin: [10, 0, 10, 0], 
+        filename: `${companyName.replace(/\s+/g, '_')}_Proposal.pdf`, 
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 }, 
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).from(printElement).save().then(() => {
+        showToast("Premium PDF Exported!", "success");
+      });
+    } catch (error) {
+      showToast("Error loading PDF Library.", "error");
+    }
   };
 
   const handleWordExport = async () => {
     if (!generatedBid) return;
+    
+    showToast("Preparing Word Export...", "success");
+
     try {
-      // Strip HTML to get plain text for the Word Document builder
+      // 1. Dynamically load docx & file-saver ONLY when the user clicks the button
+      await loadScript('https://unpkg.com/docx@8.5.0/build/index.js');
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js');
+
       const tempDiv = document.createElement("div");
       tempDiv.innerHTML = generatedBid;
       const plainText = tempDiv.innerText || tempDiv.textContent || "";
       
-      const doc = new Document({
+      // 2. Call the globally loaded docx library
+      const doc = new window.docx.Document({
         sections: [{
           properties: {},
-          children: plainText.split('\n').map(line => new Paragraph({
-            children: [new TextRun({ text: line })]
+          children: plainText.split('\n').map(line => new window.docx.Paragraph({
+            children: [new window.docx.TextRun({ text: line })]
           }))
         }]
       });
-      const blob = await Packer.toBlob(doc);
-      saveAs(blob, "Proposal.docx");
+      
+      const blob = await window.docx.Packer.toBlob(doc);
+      window.saveAs(blob, "Proposal.docx");
       showToast("Word Document Exported!", "success");
     } catch (error) {
       showToast("Error creating Word document.", "error");
