@@ -99,7 +99,6 @@ function PublicProposal() {
       <style>{globalStyles}</style>
       <div className="max-w-4xl mx-auto bg-gray-900/80 backdrop-blur-2xl border border-gray-800 p-12 rounded-[3rem] shadow-[0_0_50px_rgba(0,0,0,0.5)] relative overflow-hidden">
         
-        {/* Glow Effects */}
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-80"></div>
         <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-500 rounded-full blur-[100px] opacity-10 pointer-events-none"></div>
 
@@ -286,7 +285,7 @@ function Dashboard() {
   const [targetAudience, setTargetAudience] = useState('General Manager / CEO');
   const [clientObjection, setClientObjection] = useState('');
   
-  const [generatedBid, setGeneratedBid] = useState(''); // Stores HTML for Quill Editor
+  const [generatedBid, setGeneratedBid] = useState(''); 
   const [manualAddition, setManualAddition] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [confidenceScore, setConfidenceScore] = useState(null);
@@ -314,6 +313,7 @@ function Dashboard() {
   const [settings, setSettings] = useState({ banned_phrases: '', confidential_keywords: '' });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
+  // --- QUILL REF FOR HIGHLIGHTED TEXT DETECTION ---
   const quillRef = useRef(null);
 
   useEffect(() => { if (!token) navigate('/'); }, [token, navigate]);
@@ -386,7 +386,6 @@ function Dashboard() {
         { headers: { Authorization: `Bearer ${token}` } } 
       );
       
-      // PARSE THE AI'S MARKDOWN INTO BEAUTIFUL HTML FOR THE EDITOR
       const htmlFormattedText = marked.parse(response.data.content);
       setGeneratedBid(htmlFormattedText); 
       
@@ -402,25 +401,59 @@ function Dashboard() {
     }
   };
 
+  // --- THE AI HIGHLIGHTED SNIPPET REWRITE LOGIC ---
   const handleAiRevise = async (instruction) => {
     if (!currentGenerationId || !generatedBid) return;
+
+    // 1. Get the exact text the user has highlighted with their mouse
+    const editor = quillRef.current?.getEditor();
+    const selection = editor?.getSelection();
+
+    if (!selection || selection.length === 0) {
+      showToast("Please highlight a specific part of the text you want the AI to rewrite!", "error");
+      return;
+    }
+
+    const textToRevise = editor.getText(selection.index, selection.length);
+
+    if (!textToRevise.trim()) {
+       showToast("Please highlight some actual words!", "error");
+       return;
+    }
+
     setIsRevising(true);
     try {
-      // Create a temporary element to strip the HTML so the AI just reads plain text
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = generatedBid;
-      const plainTextContent = tempDiv.innerText || tempDiv.textContent || "";
-
-      const response = await axios.post('https://bid-helper-agent.onrender.com/generate/ai-revise',
-        { generation_id: currentGenerationId, current_content: plainTextContent, instruction },
+      // 2. Send only the highlighted snippet to the backend
+      const response = await axios.post(
+        'https://bid-helper-agent.onrender.com/generate/ai-revise-snippet',
+        {
+          instruction: instruction,
+          selected_text: textToRevise
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
-      // Convert the new revised markdown back to HTML
-      const htmlFormattedText = marked.parse(response.data.content);
-      setGeneratedBid(htmlFormattedText);
-      showToast(`AI Magic Applied!`, "success");
-    } catch (error) { showToast("Error applying AI revision.", "error"); } finally { setIsRevising(false); }
+
+      const newSnippet = response.data.content;
+
+      // 3. Delete old text and insert the AI's new text perfectly in place
+      editor.deleteText(selection.index, selection.length);
+      editor.insertText(selection.index, newSnippet);
+
+      // 4. Save the new state to the screen and the backend
+      setGeneratedBid(editor.root.innerHTML);
+      showToast(`Magic Applied! Text updated.`, "success");
+
+      await axios.post(
+        `https://bid-helper-agent.onrender.com/history/${currentGenerationId}/revise`,
+        { content: editor.root.innerHTML, action_type: 'ai_revise_snippet' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+    } catch (error) {
+      showToast(error.response?.data?.detail || "Error revising snippet.", "error");
+    } finally {
+      setIsRevising(false);
+    }
   };
 
   const handleManualAppend = () => {
@@ -648,7 +681,6 @@ function Dashboard() {
   const lostBids = historyBids.filter(b => b.outcome_tag === 'Lost').length;
   const winRate = totalBids > 0 && (wonBids + lostBids) > 0 ? Math.round((wonBids / (wonBids + lostBids)) * 100) : 0;
 
-  // Transform History Data for Recharts
   const chartDataMap = {};
   [...historyBids].reverse().forEach(bid => {
       const date = new Date(bid.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -874,7 +906,7 @@ function Dashboard() {
               </div>
 
               {generatedBid ? (
-                /* --- TRUE WYSIWYG EDITOR (REACT QUILL) --- */
+                /* --- TRUE WYSIWYG EDITOR (REACT QUILL) WITH REF --- */
                 <div className="flex-grow bg-gray-950/50 border border-gray-800 rounded-2xl overflow-hidden mb-4 shadow-inner custom-quill-container">
                   <ReactQuill ref={quillRef} theme="snow" value={generatedBid} onChange={setGeneratedBid} className="h-full min-h-[300px]" />
                 </div>
@@ -894,15 +926,17 @@ function Dashboard() {
 
                   <div className="p-5 bg-gray-950/50 border border-gray-800 rounded-2xl">
                     <div className="flex justify-between items-center mb-3">
-                      <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest">AI Post-Processing & Overrides</span>
+                      <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest">AI Snippet Overrides</span>
                       {isRevising && <span className="text-[10px] text-purple-400 animate-pulse font-bold tracking-widest uppercase">Processing...</span>}
                     </div>
                     
+                    <p className="text-xs text-purple-400 mb-3 italic">Highlight a specific sentence above, then click a magic button to rewrite ONLY that part!</p>
+
                     <div className="flex gap-2 flex-wrap mb-4">
                       <button onClick={() => handleAiRevise("Make this much shorter and more concise.")} disabled={isRevising} className="bg-purple-900/20 hover:bg-purple-800/30 border border-purple-800/50 text-purple-300 text-xs font-bold py-2.5 px-4 rounded-xl disabled:opacity-50 transition-all btn-press flex items-center gap-2"><Wand2 size={12}/> Compact</button>
                       <button onClick={() => handleAiRevise("Make the tone more aggressive, confident, and persuasive.")} disabled={isRevising} className="bg-purple-900/20 hover:bg-purple-800/30 border border-purple-800/50 text-purple-300 text-xs font-bold py-2.5 px-4 rounded-xl disabled:opacity-50 transition-all btn-press flex items-center gap-2"><Wand2 size={12}/> Aggressive</button>
                       <button onClick={() => handleAiRevise("Fix any grammar mistakes and polish the language.")} disabled={isRevising} className="bg-emerald-900/20 hover:bg-emerald-800/30 border border-emerald-800/50 text-emerald-300 text-xs font-bold py-2.5 px-4 rounded-xl disabled:opacity-50 transition-all btn-press flex items-center gap-2"><Wand2 size={12}/> Polish</button>
-                      <button onClick={() => handleAiRevise("Summarize this entire proposal into a short, punchy, 3-sentence email cover letter that I can send to the client with the PDF attached.")} disabled={isRevising} className="bg-blue-900/20 hover:bg-blue-800/30 border border-blue-800/50 text-blue-300 text-xs font-bold py-2.5 px-4 rounded-xl disabled:opacity-50 transition-all btn-press flex items-center gap-2"><Mail size={12}/> Draft Email</button>
+                      <button onClick={() => handleAiRevise("Summarize this into a short, punchy email cover letter.")} disabled={isRevising} className="bg-blue-900/20 hover:bg-blue-800/30 border border-blue-800/50 text-blue-300 text-xs font-bold py-2.5 px-4 rounded-xl disabled:opacity-50 transition-all btn-press flex items-center gap-2"><Mail size={12}/> Draft Email</button>
                     </div>
 
                     <hr className="border-gray-800/50 mb-4" />
