@@ -100,7 +100,8 @@ def send_otp_email(receiver_email: str, otp_code: str):
     message.attach(MIMEText(html, "html"))
 
     try:
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        # ADDED TIMEOUT: 5 seconds max so it doesn't get "stuck" if Render blocks it
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=5) as server:
             server.starttls()
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, receiver_email, message.as_string())
@@ -351,7 +352,11 @@ async def forgot_password(request: ForgotPasswordRequest):
     email_sent = send_otp_email(receiver_email, otp_code)
     
     if not email_sent:
-        raise HTTPException(status_code=500, detail="Failed to send email. Check Render Environment Variables.")
+        # DEMO MODE FALLBACK: If Render blocks the email port, return the OTP to the screen!
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Render Free Tier blocked email. DEMO MODE OTP: {otp_code}"
+        )
 
     return {"message": "OTP sent successfully!"}
 
