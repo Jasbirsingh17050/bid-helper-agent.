@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, Field
+from typing import Optional
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
@@ -33,6 +34,13 @@ class UserSignUp(BaseModel):
 
 class GoogleToken(BaseModel):
     token: str
+
+class UserProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    profile_picture: Optional[str] = None
+
+class UserStatusUpdate(BaseModel):
+    is_active: bool
 
 # Helper Functions
 def hash_password(password: str) -> str:
@@ -199,8 +207,6 @@ async def google_login(google_data: GoogleToken):
 # ---------------------------------------------------------
 # NEW: ADMIN USER MANAGEMENT ENDPOINTS
 # ---------------------------------------------------------
-class UserStatusUpdate(BaseModel):
-    is_active: bool
 
 @router.get("/users")
 async def get_all_users(current_admin: dict = Depends(get_current_admin)):
@@ -233,3 +239,33 @@ async def update_user_status(username: str, status_data: UserStatusUpdate, curre
         raise HTTPException(status_code=404, detail="User not found.")
         
     return {"message": f"User {username} status updated successfully."}
+
+# ---------------------------------------------------------
+# NEW: PROFILE MANAGEMENT ENDPOINTS
+# ---------------------------------------------------------
+@router.get("/profile")
+async def get_my_profile(current_user: dict = Depends(get_current_user)):
+    return {
+        "username": current_user["username"],
+        "role": current_user["role"],
+        "full_name": current_user.get("full_name", ""),
+        "profile_picture": current_user.get("profile_picture", "")
+    }
+
+@router.put("/profile")
+async def update_my_profile(profile_data: UserProfileUpdate, current_user: dict = Depends(get_current_user)):
+    update_fields = {}
+    if profile_data.full_name is not None:
+        update_fields["full_name"] = profile_data.full_name
+    if profile_data.profile_picture is not None:
+        update_fields["profile_picture"] = profile_data.profile_picture
+        
+    if not update_fields:
+        return {"message": "No data provided to update."}
+        
+    await users_collection.update_one(
+        {"username": current_user["username"]},
+        {"$set": update_fields}
+    )
+    
+    return {"message": "Profile updated successfully!"}
