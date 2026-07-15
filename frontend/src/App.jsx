@@ -1,23 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { GoogleOAuthProvider, GoogleLogin } from 'https://esm.sh/@react-oauth/google@0.12.1?external=react,react-dom';
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
-import ReactQuill from 'https://esm.sh/react-quill@2.0.0?external=react,react-dom';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import './index.css';
 import { marked } from 'marked';
+
+// Safely imported icons (removed deprecated ones that might crash Vite)
 import { 
   Eye, EyeOff, Users, UserCheck, UserX, 
   Trophy, XCircle, TrendingUp, Target, Award,
-  CheckCircle2, Copy, FileText, Download, Wand2, Sparkles, Send, BookOpen, Settings, Zap, Activity, LogOut, Mail, UserCircle, Mic, MicOff, Globe, Plus, Image as ImageIcon
+  CheckCircle, Copy, FileText, Download, Wand2, Sparkles, Send, BookOpen, Settings, Zap, Activity, LogOut, Mail, User, Mic, MicOff, Globe, Plus, Image as ImageIcon
 } from 'lucide-react';
 
 // --- PREMIUM NEON GLOBAL STYLES ---
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-  @import url('https://unpkg.com/react-quill@2.0.0/dist/quill.snow.css');
   
   body {
-    background-color: #020617; /* Deep Space Slate */
+    background-color: #020617; 
     color: #f8fafc;
     font-family: 'Inter', sans-serif;
     background-image: radial-gradient(circle at 15% 50%, rgba(56, 189, 248, 0.04), transparent 25%),
@@ -383,7 +386,7 @@ function Dashboard() {
   const [targetAudience, setTargetAudience] = useState('General Manager / CEO');
   const [clientObjection, setClientObjection] = useState('');
   
-  const [generatedBid, setGeneratedBid] = useState(''); // Stores HTML for Quill Editor
+  const [generatedBid, setGeneratedBid] = useState(''); 
   const [manualAddition, setManualAddition] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [confidenceScore, setConfidenceScore] = useState(null);
@@ -399,7 +402,7 @@ function Dashboard() {
   const [profilePicture, setProfilePicture] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   
-  // Custom Company Name for the PDF Export
+  // Custom Company Name
   const [companyName, setCompanyName] = useState(localStorage.getItem('companyName') || 'Acme Agency');
 
   // History & Analytics States
@@ -426,7 +429,6 @@ function Dashboard() {
 
   const handleLogout = () => { localStorage.clear(); navigate('/'); };
 
-  // --- PROFILE LOGIC ---
   const loadProfile = async () => {
     try {
       const response = await axios.get('https://bid-helper-agent.onrender.com/auth/profile', {
@@ -470,7 +472,6 @@ function Dashboard() {
 
   const insertSnippet = (text) => setLeadText(prev => prev + (prev.length > 0 && !prev.endsWith(' ') ? ' ' : '') + text);
 
-  // Voice to Text Toggle Logic
   const toggleListening = () => {
     if (isListening) {
       if (window.speechRecognitionInstance) {
@@ -600,7 +601,6 @@ function Dashboard() {
     showToast("Client Link Copied!", "success");
   };
 
-  // DYNAMIC SCRIPT LOADER TO BYPASS VERCEL BUILD ERRORS
   const loadScript = (src) => {
     return new Promise((resolve, reject) => {
       if (document.querySelector(`script[src="${src}"]`)) return resolve();
@@ -824,7 +824,7 @@ function Dashboard() {
               {profilePicture ? (
                 <img src={profilePicture} alt="Profile" className="w-8 h-8 rounded-full object-cover border border-gray-700" />
               ) : (
-                <UserCircle className="text-gray-400" size={24} />
+                <User className="text-gray-400" size={24} />
               )}
               <div className="flex flex-col">
                 <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mb-0.5">Authorized Agent</span>
@@ -845,7 +845,7 @@ function Dashboard() {
         {/* Navigation Tabs */}
         <div className="flex flex-wrap gap-3 mb-10 border-b border-gray-800/50 pb-6">
           <button onClick={() => setActiveTab('generate')} className={getTabClass('generate')}><Wand2 size={18}/> Generate Engine</button>
-          <button onClick={() => setActiveTab('profile')} className={getTabClass('profile')}><UserCircle size={18}/> My Profile</button>
+          <button onClick={() => setActiveTab('profile')} className={getTabClass('profile')}><User size={18}/> My Profile</button>
           <button onClick={() => { setActiveTab('history'); loadHistory(); }} className={getTabClass('history')}><Activity size={18}/> Intelligence Logs</button>
           {role === 'admin' && (
             <>
@@ -859,7 +859,7 @@ function Dashboard() {
         {/* --- TAB: MY PROFILE --- */}
         {activeTab === 'profile' && (
           <div className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 p-8 rounded-[2rem] shadow-2xl max-w-2xl">
-            <h3 className="text-2xl font-extrabold text-white flex items-center gap-3 mb-8"><UserCircle className="text-blue-400"/> My Profile</h3>
+            <h3 className="text-2xl font-extrabold text-white flex items-center gap-3 mb-8"><User className="text-blue-400"/> My Profile</h3>
             
             <div className="space-y-8">
               <div className="flex items-center gap-6">
@@ -896,7 +896,7 @@ function Dashboard() {
                 onClick={handleSaveProfile} disabled={isSavingProfile}
                 className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-extrabold py-4 px-6 rounded-2xl shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:shadow-[0_0_30px_rgba(59,130,246,0.5)] disabled:opacity-50 transition-all flex items-center justify-center gap-2 btn-press"
               >
-                <CheckCircle2 size={18}/> {isSavingProfile ? "Saving..." : "Save Profile Data"}
+                <CheckCircle size={18}/> {isSavingProfile ? "Saving..." : "Save Profile Data"}
               </button>
             </div>
           </div>
@@ -1020,7 +1020,7 @@ function Dashboard() {
 
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-4">
-                  <h3 className="text-xl font-extrabold text-white flex items-center gap-3"><CheckCircle2 className="text-emerald-400" size={24}/> Output Matrix</h3>
+                  <h3 className="text-xl font-extrabold text-white flex items-center gap-3"><CheckCircle className="text-emerald-400" size={24}/> Output Matrix</h3>
                   
                   {/* --- CONFIDENCE SCORE UI --- */}
                   {confidenceScore !== null && !isNaN(confidenceScore) && (
@@ -1203,7 +1203,7 @@ function Dashboard() {
 
                       {latestRevision && (
                         <div className="mb-6">
-                          <h4 className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500"/> Final Output</h4>
+                          <h4 className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2"><CheckCircle size={14} className="text-emerald-500"/> Final Output</h4>
                           <div className="w-full text-sm text-gray-300 bg-gray-950/50 border border-gray-800 rounded-xl p-5 max-h-48 overflow-y-auto custom-scrollbar" dangerouslySetInnerHTML={{ __html: latestRevision.content }} />
                         </div>
                       )}
@@ -1352,7 +1352,7 @@ function Dashboard() {
                 onClick={handleSaveSettings} disabled={isSavingSettings}
                 className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold py-4 px-6 rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] disabled:opacity-50 transition-all flex items-center justify-center gap-2 btn-press"
               >
-                <CheckCircle2 size={18}/> {isSavingSettings ? "Syncing..." : "Sync Rules to Database"}
+                <CheckCircle size={18}/> {isSavingSettings ? "Syncing..." : "Sync Rules to Database"}
               </button>
             </div>
           </div>
@@ -1363,17 +1363,42 @@ function Dashboard() {
   );
 }
 
-export default function App() {
-  const clientId = "742455468037-15nrh5etl1r764tu66958coe6437rs4m.apps.googleusercontent.com";
+// Error Boundary Component to catch any UI crashes and prevent the White Screen of Death
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    this.setState({ errorInfo });
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-red-900 text-white p-10 font-mono">
+          <h1 className="text-3xl font-bold mb-4">React App Crashed</h1>
+          <p className="mb-4 font-bold text-lg">Please screenshot this entire red screen and send it to Sahil so he can fix it instantly:</p>
+          <div className="bg-black p-6 rounded-lg text-red-400 overflow-auto border border-red-500">
+            <strong className="text-xl">{this.state.error && this.state.error.toString()}</strong>
+            <br /><br />
+            <pre className="text-sm opacity-80">{this.state.errorInfo && this.state.errorInfo.componentStack}</pre>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Wrap the main app in the Error Boundary
+export default function SafeApp() {
   return (
-    <GoogleOAuthProvider clientId={clientId}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/proposal/:id" element={<PublicProposal />} />
-        </Routes>
-      </BrowserRouter>
-    </GoogleOAuthProvider>
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   );
 }
