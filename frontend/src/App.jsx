@@ -191,7 +191,16 @@ function Auth() {
       showToast("If the account exists, an OTP was sent to your email!", "success");
       setAuthMode('forgot_verify');
     } catch (err) {
-      setError(err.response?.data?.detail || "Failed to send OTP.");
+      const errorMsg = err.response?.data?.detail || "Failed to send OTP.";
+      setError(errorMsg);
+      
+      // NEW: If we get the DEMO MODE OTP, wait 5 seconds then move to the verify screen!
+      if (errorMsg.includes("DEMO MODE")) {
+        setTimeout(() => {
+          setAuthMode('forgot_verify');
+          setError(''); // Clear the error so the next screen is clean
+        }, 5000);
+      }
     }
   };
 
