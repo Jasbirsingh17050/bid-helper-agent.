@@ -318,76 +318,90 @@ async def update_my_profile(profile_data: UserProfileUpdate, current_user: dict 
 # ---------------------------------------------------------
 @router.post("/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest):
-    # FIX: Check if the user typed an email OR a username, and NO MORE TYPOS!
-    user = await users_collection.find_one({
-        "$or": [
-            {"username": request.username},
-            {"email": request.username}
-        ]
-    })
-    
-    # We return success even if user isn't found for security
-    if not user:
-        return {"message": "If that account exists, an OTP has been sent."}
+    try:
+        # Check if the user typed an email OR a username
+        user = await users_collection.find_one({
+            "$or": [
+                {"username": request.username},
+                {"email": request.username}
+            ]
+        })
+        
+        # We return success even if user isn't found for security
+        if not user:
+            return {"message": "If that account exists, an OTP has been sent."}
 
-    # Find the email to send to
-    receiver_email = user.get("email")
-    if not receiver_email:
-        if "@" in user["username"]:
-            receiver_email = user["username"]
-        else:
-            raise HTTPException(status_code=400, detail="No email address associated with this username. Please contact an Admin.")
+        # Find the email to send to
+        receiver_email = user.get("email")
+        if not receiver_email:
+            if "@" in user["username"]:
+                receiver_email = user["username"]
+            else:
+                raise HTTPException(status_code=400, detail="No email address associated with this username. Please contact an Admin.")
 
-    # Generate 6-digit OTP
-    otp_code = str(random.randint(100000, 999999))
-    otp_expiry = datetime.utcnow() + timedelta(minutes=15)
+        # Generate 6-digit OTP
+        otp_code = str(random.randint(100000, 999999))
+        otp_expiry = datetime.utcnow() + timedelta(minutes=15)
 
-    # Save OTP to database temporarily
-    await users_collection.update_one(
-        {"username": user["username"]},
-        {"$set": {"otp_code": otp_code, "otp_expiry": otp_expiry}}
-    )
-
-    # Send the email!
-    email_sent = send_otp_email(receiver_email, otp_code)
-    
-    if not email_sent:
-        # DEMO MODE FALLBACK: If Render blocks the email port, return the OTP to the screen!
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Render Free Tier blocked email. DEMO MODE OTP: {otp_code}"
+        # Save OTP to database temporarily
+        await users_collection.update_one(
+            {"username": user["username"]},
+            {"$set": {"otp_code": otp_code, "otp_expiry": otp_expiry}}
         )
 
-    return {"message": "OTP sent successfully!"}
+        # Send the email!
+        email_sent = send_otp_email(receiver_email, otp_code)
+        
+        if not email_sent:
+            # DEMO MODE FALLBACK: If Render blocks the email port, return the OTP to the screen!
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Render Free Tier blocked email. DEMO MODE OTP: {otp_code}"
+            )
+
+        return {"message": "OTP sent successfully!"}
+    
+    except HTTPException:
+        # If it's an HTTP exception we raised on purpose, let it pass
+        raise
+    except Exception as e:
+        # If ANY other python error happens, catch it and show it to the screen!
+        raise HTTPException(status_code=500, detail=f"System Error: {str(e)}")
 
 @router.post("/reset-password")
 async def reset_password(request: ResetPasswordRequest):
-    user = await users_collection.find_one({
-        "$or": [
-            {"username": request.username},
-            {"email": request.username}
-        ]
-    })
-    
-    if not user or "otp_code" not in user:
-        raise HTTPException(status_code=400, detail="Invalid OTP or Username.")
+    try:
+        user = await users_collection.find_one({
+            "$or": [
+                {"username": request.username},
+                {"email": request.username}
+            ]
+        })
         
-    if user["otp_code"] != request.otp:
-        raise HTTPException(status_code=400, detail="Incorrect OTP.")
-        
-    # Check if OTP expired
-    if datetime.utcnow() > user["otp_expiry"]:
-        raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
+        if not user or "otp_code" not in user:
+            raise HTTPException(status_code=400, detail="Invalid OTP or Username.")
+            
+        if user["otp_code"] != request.otp:
+            raise HTTPException(status_code=400, detail="Incorrect OTP.")
+            
+        # Check if OTP expired
+        if datetime.utcnow() > user["otp_expiry"]:
+            raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
 
-    # Hash the new password and clear the OTP fields
-    hashed_password = hash_password(request.new_password)
-    
-    await users_collection.update_one(
-        {"username": user["username"]},
-        {
-            "$set": {"password_hash": hashed_password}, 
-            "$unset": {"otp_code": "", "otp_expiry": ""}
-        }
-    )
-    
-    return {"message": "Password reset successfully! You can now log in."}
+        # Hash the new password and clear the OTP fields
+        hashed_password = hash_password(request.new_password)
+        
+        await users_collection.update_one(
+            {"username": user["username"]},
+            {
+                "$set": {"password_hash": hashed_password}, 
+                "$unset": {"otp_code": "", "otp_expiry": ""}
+            }
+        )
+        
+        return {"message": "Password reset successfully! You can now log in."}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"System Error: {str(e)}")
