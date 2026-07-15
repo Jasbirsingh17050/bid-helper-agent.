@@ -5,6 +5,10 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 import os
+import random
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 from database.db import users_collection
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
@@ -42,6 +46,15 @@ class UserProfileUpdate(BaseModel):
 class UserStatusUpdate(BaseModel):
     is_active: bool
 
+# NEW OTP Schemas
+class ForgotPasswordRequest(BaseModel):
+    username: str
+
+class ResetPasswordRequest(BaseModel):
+    username: str
+    otp: str
+    new_password: str = Field(..., min_length=6)
+
 # Helper Functions
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -54,6 +67,47 @@ def create_access_token(data: dict):
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def send_otp_email(receiver_email: str, otp_code: str):
+    sender_email = os.getenv("MAIL_USERNAME")
+    sender_password = os.getenv("MAIL_PASSWORD")
+    
+    if not sender_email or not sender_password:
+        print("CRITICAL: MAIL_USERNAME or MAIL_PASSWORD missing in environment variables.")
+        return False
+
+    message = MIMEMultipart("alternative")
+    message["Subject"] = "Your Password Reset OTP - Bid Helper Agent"
+    message["From"] = sender_email
+    message["To"] = receiver_email
+
+    html = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; color: #333;">
+        <div style="max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #2563eb;">Password Reset Request</h2>
+            <p>We received a request to reset the password for your Bid Helper Agent account.</p>
+            <p>Your 6-digit OTP code is:</p>
+            <div style="background-color: #f3f4f6; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
+                <strong style="font-size: 32px; letter-spacing: 5px; color: #1e40af;">{otp_code}</strong>
+            </div>
+            <p style="font-size: 12px; color: #666;">This code will expire in 15 minutes.</p>
+            <p style="font-size: 12px; color: #666;">If you didn't request this, please ignore this email. Your account is safe.</p>
+        </div>
+      </body>
+    </html>
+    """
+    message.attach(MIMEText(html, "html"))
+
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, receiver_email, message.as_string())
+        return True
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+        return False
 
 # --- Dependency Functions (The "Locks") ---
 
@@ -205,7 +259,7 @@ async def google_login(google_data: GoogleToken):
         raise HTTPException(status_code=401, detail="Invalid Google token.")
 
 # ---------------------------------------------------------
-# NEW: ADMIN USER MANAGEMENT ENDPOINTS
+# ADMIN USER MANAGEMENT ENDPOINTS
 # ---------------------------------------------------------
 
 @router.get("/users")
@@ -241,7 +295,7 @@ async def update_user_status(username: str, status_data: UserStatusUpdate, curre
     return {"message": f"User {username} status updated successfully."}
 
 # ---------------------------------------------------------
-# NEW: PROFILE MANAGEMENT ENDPOINTS
+# PROFILE MANAGEMENT ENDPOINTS
 # ---------------------------------------------------------
 @router.get("/profile")
 async def get_my_profile(current_user: dict = Depends(get_current_user)):
@@ -269,3 +323,67 @@ async def update_my_profile(profile_data: UserProfileUpdate, current_user: dict 
     )
     
     return {"message": "Profile updated successfully!"}
+
+# ---------------------------------------------------------
+# NEW: FORGOT PASSWORD & OTP ENDPOINTS
+# ---------------------------------------------------------
+@router.post("/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest):
+    user = await users_collection.find_one({"username": request.request.username})
+    
+    # We return success even if user isn't found for security (prevents hacker enumeration)
+    if not user:
+        return {"message": "If that account exists, an OTP has been sent."}
+
+    # Find the email to send to. If username is an email, use it. Otherwise use saved email.
+    receiver_email = user.get("email")
+    if not receiver_email:
+        if "@" in user["username"]:
+            receiver_email = user["username"]
+        else:
+            raise HTTPException(status_code=400, detail="No email address associated with this username. Please contact an Admin.")
+
+    # Generate 6-digit OTP
+    otp_code = str(random.randint(100000, 999999))
+    otp_expiry = datetime.utcnow() + timedelta(minutes=15)
+
+    # Save OTP to database temporarily
+    await users_collection.update_one(
+        {"username": user["username"]},
+        {"$set": {"otp_code": otp_code, "otp_expiry": otp_expiry}}
+    )
+
+    # Send the email!
+    email_sent = send_otp_email(receiver_email, otp_code)
+    
+    if not email_sent:
+        raise HTTPException(status_code=500, detail="Failed to send email. Check Render Environment Variables.")
+
+    return {"message": "OTP sent successfully!"}
+
+@router.post("/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    user = await users_collection.find_one({"username": request.username})
+    
+    if not user or "otp_code" not in user:
+        raise HTTPException(status_code=400, detail="Invalid OTP or Username.")
+        
+    if user["otp_code"] != request.otp:
+        raise HTTPException(status_code=400, detail="Incorrect OTP.")
+        
+    # Check if OTP expired
+    if datetime.utcnow() > user["otp_expiry"]:
+        raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
+
+    # Hash the new password and clear the OTP fields
+    hashed_password = hash_password(request.new_password)
+    
+    await users_collection.update_one(
+        {"username": user["username"]},
+        {
+            "$set": {"password_hash": hashed_password}, 
+            "$unset": {"otp_code": "", "otp_expiry": ""}
+        }
+    )
+    
+    return {"message": "Password reset successfully! You can now log in."}
