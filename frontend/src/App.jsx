@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import './index.css'; // <--- THIS FORCES TAILWIND TO LOAD
+import './App.css';   // <--- CATCH-ALL FOR EXTRA STYLES
 import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
@@ -12,7 +14,6 @@ import {
   CheckCircle2, Copy, FileText, Download, Wand2, Sparkles, Send, BookOpen, Settings, Zap, Activity, LogOut, Mail, UserCircle, Mic, MicOff, Globe, Plus
 } from 'lucide-react';
 
-// --- PREMIUM NEON GLOBAL STYLES ---
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
   
