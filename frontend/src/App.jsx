@@ -1,21 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+import { GoogleOAuthProvider, GoogleLogin } from 'https://esm.sh/@react-oauth/google@0.12.1?external=react,react-dom';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
-import './index.css';
+import ReactQuill from 'https://esm.sh/react-quill@2.0.0?external=react,react-dom';
 import { marked } from 'marked';
 import { 
   Eye, EyeOff, Users, UserCheck, UserX, 
   Trophy, XCircle, TrendingUp, Target, Award,
-  CheckCircle2, Copy, FileText, Download, Wand2, Sparkles, Send, BookOpen, Settings, Zap, Activity, LogOut, Mail, UserCircle, Mic, MicOff, Globe, Plus
+  CheckCircle2, Copy, FileText, Download, Wand2, Sparkles, Send, BookOpen, Settings, Zap, Activity, LogOut, Mail, UserCircle, Mic, MicOff, Globe, Plus, Image as ImageIcon
 } from 'lucide-react';
 
 // --- PREMIUM NEON GLOBAL STYLES ---
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  @import url('https://unpkg.com/react-quill@2.0.0/dist/quill.snow.css');
   
   body {
     background-color: #020617; /* Deep Space Slate */
@@ -99,6 +98,7 @@ function PublicProposal() {
       <style>{globalStyles}</style>
       <div className="max-w-4xl mx-auto bg-gray-900/80 backdrop-blur-2xl border border-gray-800 p-12 rounded-[3rem] shadow-[0_0_50px_rgba(0,0,0,0.5)] relative overflow-hidden">
         
+        {/* Glow Effects */}
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-80"></div>
         <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-500 rounded-full blur-[100px] opacity-10 pointer-events-none"></div>
 
@@ -121,15 +121,20 @@ function PublicProposal() {
   );
 }
 
-// --- 1. AUTH COMPONENT (SIGN IN & SIGN UP) ---
+// --- 1. AUTH COMPONENT (SIGN IN & SIGN UP & FORGOT PASSWORD) ---
 function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [authMode, setAuthMode] = useState('login'); // 'login', 'signup', 'forgot_request', 'forgot_verify'
+  
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('admin');
   const [error, setError] = useState('');
   const [toast, setToast] = useState({ message: '', type: '' });
+  
   const navigate = useNavigate();
 
   const showToast = (message, type = 'success') => {
@@ -155,7 +160,7 @@ function Auth() {
     e.preventDefault();
     setError('');
     
-    if (isLogin) {
+    if (authMode === 'login') {
       try {
         const params = new URLSearchParams();
         params.append('username', username);
@@ -170,16 +175,55 @@ function Auth() {
       } catch (err) {
         setError(err.response?.data?.detail || "Network Error.");
       }
-    } else {
+    } else if (authMode === 'signup') {
       try {
         await axios.post('https://bid-helper-agent.onrender.com/auth/signup', { username, password, role });
         showToast("Account created successfully! Please log in.", "success");
-        setIsLogin(true);
+        setAuthMode('login');
         setPassword('');
       } catch (err) {
         setError(err.response?.data?.detail || "Registration failed.");
       }
     }
+  };
+
+  const handleSendOTP = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      await axios.post('https://bid-helper-agent.onrender.com/auth/forgot-password', { username });
+      showToast("If the account exists, an OTP was sent to your email!", "success");
+      setAuthMode('forgot_verify');
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to send OTP.");
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      await axios.post('https://bid-helper-agent.onrender.com/auth/reset-password', {
+        username: username,
+        otp: otp,
+        new_password: newPassword
+      });
+      showToast("Password reset successfully! You can now log in.", "success");
+      setAuthMode('login');
+      setOtp('');
+      setNewPassword('');
+      setPassword('');
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to reset password.");
+    }
+  };
+
+  const getTitle = () => {
+    if (authMode === 'login') return "Welcome Back";
+    if (authMode === 'signup') return "Create Account";
+    if (authMode === 'forgot_request') return "Reset Password";
+    if (authMode === 'forgot_verify') return "Verify OTP";
+    return "";
   };
 
   return (
@@ -198,63 +242,117 @@ function Auth() {
         </div>
 
         <h2 className="text-3xl font-extrabold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
-          {isLogin ? "Welcome Back" : "Create Account"}
+          {getTitle()}
         </h2>
         
         {error && <div className="bg-red-500/20 border border-red-500/50 text-red-300 p-3 rounded-xl mb-6 text-sm font-medium text-center">{error}</div>}
         
-        <form onSubmit={handleAuth} className="space-y-5 relative z-10">
-          <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Username</label>
-            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} 
-                   className="w-full p-3 bg-gray-950/50 border border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white transition-all outline-none" required minLength="3" />
-          </div>
-          
-          <div className="relative">
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Password</label>
-            <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} 
-                   className="w-full p-3 bg-gray-950/50 border border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white transition-all outline-none pr-10" required minLength="6" />
-            
-            <button 
-              type="button" 
-              onClick={() => setShowPassword(!showPassword)} 
-              className="absolute right-3 top-9 text-gray-500 hover:text-blue-400 transition-colors"
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
-
-          {!isLogin && (
+        {/* --- LOGIN & SIGNUP FORMS --- */}
+        {(authMode === 'login' || authMode === 'signup') && (
+          <form onSubmit={handleAuth} className="space-y-5 relative z-10">
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Role</label>
-              <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full p-3 bg-gray-950/50 border border-gray-700 rounded-xl text-white outline-none">
-                <option value="admin">Admin</option>
-                <option value="team">Team Member</option>
-              </select>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Username / Email</label>
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} 
+                     className="w-full p-3 bg-gray-950/50 border border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white transition-all outline-none" required minLength="3" />
             </div>
-          )}
+            
+            <div className="relative">
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex justify-between">
+                Password
+                {authMode === 'login' && (
+                  <button type="button" onClick={() => setAuthMode('forgot_request')} className="text-blue-400 hover:text-blue-300 transition-colors">Forgot?</button>
+                )}
+              </label>
+              <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} 
+                     className="w-full p-3 bg-gray-950/50 border border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white transition-all outline-none pr-10" required minLength="6" />
+              
+              <button 
+                type="button" onClick={() => setShowPassword(!showPassword)} 
+                className="absolute right-3 top-9 text-gray-500 hover:text-blue-400 transition-colors"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
 
-          <button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-3 px-4 rounded-xl shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] hover:scale-[1.02] transition-all duration-200 mt-4">
-            {isLogin ? "Access System" : "Initialize Account"}
-          </button>
-        </form>
+            {authMode === 'signup' && (
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Role</label>
+                <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full p-3 bg-gray-950/50 border border-gray-700 rounded-xl text-white outline-none">
+                  <option value="admin">Admin</option>
+                  <option value="team">Team Member</option>
+                </select>
+              </div>
+            )}
 
-        <div className="mt-8 flex items-center justify-between opacity-50">
-          <hr className="w-full border-gray-700" />
-          <span className="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider">OR</span>
-          <hr className="w-full border-gray-700" />
-        </div>
-        
-        <div className="mt-6 flex justify-center hover:scale-[1.02] transition-transform">
-          <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError("Google Login Failed")} theme="filled_black" shape="pill" />
-        </div>
+            <button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-3 px-4 rounded-xl shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] hover:scale-[1.02] transition-all duration-200 mt-4">
+              {authMode === 'login' ? "Access System" : "Initialize Account"}
+            </button>
+          </form>
+        )}
 
-        <div className="mt-8 text-center text-sm text-gray-400">
-          {isLogin ? "Don't have an account? " : "Already have an account? "}
-          <button onClick={() => { setIsLogin(!isLogin); setError(''); }} type="button" className="text-blue-400 font-bold hover:text-blue-300 hover:underline transition-all">
-            {isLogin ? "Sign Up" : "Log In"}
-          </button>
-        </div>
+        {/* --- FORGOT PASSWORD REQUEST FORM --- */}
+        {authMode === 'forgot_request' && (
+          <form onSubmit={handleSendOTP} className="space-y-5 relative z-10">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Username / Email</label>
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Enter your email or username"
+                     className="w-full p-3 bg-gray-950/50 border border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white transition-all outline-none" required />
+            </div>
+            
+            <button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-3 px-4 rounded-xl shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] hover:scale-[1.02] transition-all duration-200 mt-4">
+              Send 6-Digit OTP
+            </button>
+            <div className="text-center mt-4">
+              <button type="button" onClick={() => setAuthMode('login')} className="text-gray-400 font-bold hover:text-gray-200 text-sm transition-colors">Back to Login</button>
+            </div>
+          </form>
+        )}
+
+        {/* --- FORGOT PASSWORD VERIFY OTP FORM --- */}
+        {authMode === 'forgot_verify' && (
+          <form onSubmit={handleResetPassword} className="space-y-5 relative z-10">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">6-Digit OTP Code</label>
+              <input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="e.g. 123456" maxLength="6"
+                     className="w-full p-3 text-center tracking-[0.5em] font-bold text-xl bg-gray-950/50 border border-gray-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-emerald-400 transition-all outline-none" required />
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">New Password</label>
+              <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} 
+                     className="w-full p-3 bg-gray-950/50 border border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white transition-all outline-none" required minLength="6" />
+            </div>
+
+            <button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-3 px-4 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)] hover:scale-[1.02] transition-all duration-200 mt-4">
+              Reset Password
+            </button>
+            <div className="text-center mt-4">
+              <button type="button" onClick={() => setAuthMode('login')} className="text-gray-400 font-bold hover:text-gray-200 text-sm transition-colors">Back to Login</button>
+            </div>
+          </form>
+        )}
+
+        {/* Google Login Only Shows on Standard Login/Signup */}
+        {(authMode === 'login' || authMode === 'signup') && (
+          <>
+            <div className="mt-8 flex items-center justify-between opacity-50">
+              <hr className="w-full border-gray-700" />
+              <span className="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider">OR</span>
+              <hr className="w-full border-gray-700" />
+            </div>
+            
+            <div className="mt-6 flex justify-center hover:scale-[1.02] transition-transform">
+              <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError("Google Login Failed")} theme="filled_black" shape="pill" />
+            </div>
+
+            <div className="mt-8 text-center text-sm text-gray-400">
+              {authMode === 'login' ? "Don't have an account? " : "Already have an account? "}
+              <button onClick={() => { setAuthMode(authMode === 'login' ? 'signup' : 'login'); setError(''); }} type="button" className="text-blue-400 font-bold hover:text-blue-300 hover:underline transition-all">
+                {authMode === 'login' ? "Sign Up" : "Log In"}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -276,11 +374,6 @@ function Dashboard() {
     setTimeout(() => setToast({ message: '', type: '' }), 4000);
   };
 
-  // Profile States
-  const [profileFullName, setProfileFullName] = useState('');
-  const [profilePicture, setProfilePicture] = useState('');
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-
   // Generation States
   const [leadText, setLeadText] = useState('');
   const [tone, setTone] = useState('Professional');
@@ -290,7 +383,7 @@ function Dashboard() {
   const [targetAudience, setTargetAudience] = useState('General Manager / CEO');
   const [clientObjection, setClientObjection] = useState('');
   
-  const [generatedBid, setGeneratedBid] = useState(''); 
+  const [generatedBid, setGeneratedBid] = useState(''); // Stores HTML for Quill Editor
   const [manualAddition, setManualAddition] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [confidenceScore, setConfidenceScore] = useState(null);
@@ -300,6 +393,11 @@ function Dashboard() {
   
   // Voice Input States
   const [isListening, setIsListening] = useState(false);
+  
+  // Profile States
+  const [profileFullName, setProfileFullName] = useState('');
+  const [profilePicture, setProfilePicture] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   
   // Custom Company Name for the PDF Export
   const [companyName, setCompanyName] = useState(localStorage.getItem('companyName') || 'Acme Agency');
@@ -320,6 +418,15 @@ function Dashboard() {
 
   const quillRef = useRef(null);
 
+  useEffect(() => { if (!token) navigate('/'); }, [token, navigate]);
+  useEffect(() => { 
+    if (activeTab === 'settings' && role === 'admin') loadSettings();
+    if (activeTab === 'profile') loadProfile();
+  }, [activeTab]);
+
+  const handleLogout = () => { localStorage.clear(); navigate('/'); };
+
+  // --- PROFILE LOGIC ---
   const loadProfile = async () => {
     try {
       const response = await axios.get('https://bid-helper-agent.onrender.com/auth/profile', {
@@ -332,17 +439,34 @@ function Dashboard() {
     }
   };
 
-  useEffect(() => { 
-    if (!token) {
-        navigate('/'); 
-    } else {
-        loadProfile(); // Load profile data when dashboard opens
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 1000000) {
+        return showToast("Image is too large. Please select an image under 1MB.", "error");
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePicture(reader.result);
+      };
+      reader.readAsDataURL(file);
     }
-  }, [token, navigate]);
+  };
 
-  useEffect(() => { if (activeTab === 'settings' && role === 'admin') loadSettings(); }, [activeTab]);
-
-  const handleLogout = () => { localStorage.clear(); navigate('/'); };
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    try {
+      await axios.put('https://bid-helper-agent.onrender.com/auth/profile', 
+        { full_name: profileFullName, profile_picture: profilePicture },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      showToast("Profile updated successfully!", "success");
+    } catch (error) {
+      showToast("Failed to update profile.", "error");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   const insertSnippet = (text) => setLeadText(prev => prev + (prev.length > 0 && !prev.endsWith(' ') ? ' ' : '') + text);
 
@@ -426,51 +550,21 @@ function Dashboard() {
 
   const handleAiRevise = async (instruction) => {
     if (!currentGenerationId || !generatedBid) return;
-
-    const editor = quillRef.current?.getEditor();
-    const selection = editor?.getSelection();
-
-    if (!selection || selection.length === 0) {
-      showToast("Please highlight a specific part of the text you want the AI to rewrite!", "error");
-      return;
-    }
-
-    const textToRevise = editor.getText(selection.index, selection.length);
-
-    if (!textToRevise.trim()) {
-       showToast("Please highlight some actual words!", "error");
-       return;
-    }
-
     setIsRevising(true);
     try {
-      const response = await axios.post(
-        'https://bid-helper-agent.onrender.com/generate/ai-revise-snippet',
-        {
-          instruction: instruction,
-          selected_text: textToRevise
-        },
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = generatedBid;
+      const plainTextContent = tempDiv.innerText || tempDiv.textContent || "";
+
+      const response = await axios.post('https://bid-helper-agent.onrender.com/generate/ai-revise',
+        { generation_id: currentGenerationId, current_content: plainTextContent, instruction },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      const newSnippet = response.data.content;
-      editor.deleteText(selection.index, selection.length);
-      editor.insertText(selection.index, newSnippet);
-
-      setGeneratedBid(editor.root.innerHTML);
-      showToast(`Magic Applied! Text updated.`, "success");
-
-      await axios.post(
-        `https://bid-helper-agent.onrender.com/history/${currentGenerationId}/revise`,
-        { content: editor.root.innerHTML, action_type: 'ai_revise_snippet' },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-    } catch (error) {
-      showToast(error.response?.data?.detail || "Error revising snippet.", "error");
-    } finally {
-      setIsRevising(false);
-    }
+      
+      const htmlFormattedText = marked.parse(response.data.content);
+      setGeneratedBid(htmlFormattedText);
+      showToast(`AI Magic Applied!`, "success");
+    } catch (error) { showToast("Error applying AI revision.", "error"); } finally { setIsRevising(false); }
   };
 
   const handleManualAppend = () => {
@@ -506,6 +600,7 @@ function Dashboard() {
     showToast("Client Link Copied!", "success");
   };
 
+  // DYNAMIC SCRIPT LOADER TO BYPASS VERCEL BUILD ERRORS
   const loadScript = (src) => {
     return new Promise((resolve, reject) => {
       if (document.querySelector(`script[src="${src}"]`)) return resolve();
@@ -519,10 +614,12 @@ function Dashboard() {
 
   const handlePdfExport = async () => {
     if (!generatedBid) return;
+    
     showToast("Preparing PDF Export...", "success");
     
     try {
       await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
+      
       const printElement = document.createElement('div');
       const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
       
@@ -564,6 +661,7 @@ function Dashboard() {
 
   const handleWordExport = async () => {
     if (!generatedBid) return;
+    
     showToast("Preparing Word Export...", "success");
 
     try {
@@ -682,36 +780,6 @@ function Dashboard() {
     } catch (error) { showToast(error.response?.data?.detail || "Upload failed.", "error"); } finally { setIsUploading(false); }
   };
 
-  // --- NEW: Profile Handlers ---
-  const handleImageUpload = (e) => {
-    const uploadedFile = e.target.files[0];
-    if (uploadedFile) {
-      if (uploadedFile.size > 1048576) { // 1MB limit for MongoDB document safety
-        return showToast("Image is too large. Please choose an image under 1MB.", "error");
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfilePicture(reader.result); // Save Base64 string to state
-      };
-      reader.readAsDataURL(uploadedFile);
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    setIsSavingProfile(true);
-    try {
-      await axios.put('https://bid-helper-agent.onrender.com/auth/profile', {
-        full_name: profileFullName,
-        profile_picture: profilePicture
-      }, { headers: { Authorization: `Bearer ${token}` } });
-      showToast("Profile updated successfully!", "success");
-    } catch (error) {
-      showToast("Failed to update profile.", "error");
-    } finally {
-      setIsSavingProfile(false);
-    }
-  };
-
   const wordCount = generatedBid ? generatedBid.replace(/<[^>]+>/g, '').trim().split(/\s+/).length : 0;
   const readTime = Math.ceil(wordCount / 200) || 1;
 
@@ -752,14 +820,12 @@ function Dashboard() {
           </div>
           
           <div className="flex items-center gap-6">
-            <div className="hidden md:flex items-center gap-3 bg-gray-900/50 px-4 py-2 rounded-full border border-gray-800 shadow-inner glow-hover">
-              {/* --- DYNAMIC PROFILE PICTURE IN NAVBAR --- */}
+            <div className="hidden md:flex items-center gap-3 bg-gray-900/50 px-4 py-2 rounded-full border border-gray-800 shadow-inner glow-hover cursor-pointer" onClick={() => setActiveTab('profile')}>
               {profilePicture ? (
                 <img src={profilePicture} alt="Profile" className="w-8 h-8 rounded-full object-cover border border-gray-700" />
               ) : (
-                <UserCircle className="text-gray-400" size={20} />
+                <UserCircle className="text-gray-400" size={24} />
               )}
-              
               <div className="flex flex-col">
                 <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mb-0.5">Authorized Agent</span>
                 <span className="text-sm text-gray-200 font-bold leading-none">{profileFullName || username}</span>
@@ -779,7 +845,7 @@ function Dashboard() {
         {/* Navigation Tabs */}
         <div className="flex flex-wrap gap-3 mb-10 border-b border-gray-800/50 pb-6">
           <button onClick={() => setActiveTab('generate')} className={getTabClass('generate')}><Wand2 size={18}/> Generate Engine</button>
-          <button onClick={() => { setActiveTab('profile'); loadProfile(); }} className={getTabClass('profile')}><UserCircle size={18}/> My Profile</button>
+          <button onClick={() => setActiveTab('profile')} className={getTabClass('profile')}><UserCircle size={18}/> My Profile</button>
           <button onClick={() => { setActiveTab('history'); loadHistory(); }} className={getTabClass('history')}><Activity size={18}/> Intelligence Logs</button>
           {role === 'admin' && (
             <>
@@ -790,36 +856,31 @@ function Dashboard() {
           )}
         </div>
 
-        {/* --- TAB: PROFILE --- */}
+        {/* --- TAB: MY PROFILE --- */}
         {activeTab === 'profile' && (
           <div className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 p-8 rounded-[2rem] shadow-2xl max-w-2xl">
             <h3 className="text-2xl font-extrabold text-white flex items-center gap-3 mb-8"><UserCircle className="text-blue-400"/> My Profile</h3>
             
             <div className="space-y-8">
-              
-              {/* Profile Picture Upload Section */}
               <div className="flex items-center gap-6">
-                <div className="relative">
+                <div className="w-24 h-24 rounded-full bg-gray-950 border-2 border-gray-800 flex items-center justify-center overflow-hidden shadow-inner">
                   {profilePicture ? (
-                    <img src={profilePicture} alt="Profile Preview" className="w-24 h-24 rounded-full object-cover border-4 border-gray-800 shadow-xl" />
+                    <img src={profilePicture} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-24 h-24 rounded-full bg-gray-800 flex items-center justify-center border-4 border-gray-700 shadow-xl">
-                      <UserCircle size={40} className="text-gray-500" />
-                    </div>
+                    <ImageIcon size={32} className="text-gray-600" />
                   )}
                 </div>
-                <div className="flex-1">
+                <div>
                   <label className="block text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-2">Profile Picture (Max 1MB)</label>
                   <input 
                     type="file" 
                     accept="image/*"
                     onChange={handleImageUpload}
-                    className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-blue-900/20 file:text-blue-400 hover:file:bg-blue-800/30 transition-all cursor-pointer"
+                    className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-900/20 file:text-blue-400 hover:file:bg-blue-800/30 transition-all cursor-pointer"
                   />
                 </div>
               </div>
 
-              {/* Full Name Input Section */}
               <div>
                 <label className="block text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-3">Full Name</label>
                 <input 
@@ -827,7 +888,7 @@ function Dashboard() {
                   value={profileFullName}
                   onChange={(e) => setProfileFullName(e.target.value)}
                   placeholder="e.g., Jasbir Singh"
-                  className="w-full p-4 bg-gray-950/50 border border-gray-800 rounded-2xl focus:ring-2 focus:ring-blue-500/50 text-gray-300 text-sm outline-none transition-all glow-hover"
+                  className="w-full p-4 bg-gray-950/50 border border-gray-800 rounded-xl focus:ring-2 focus:ring-blue-500/50 text-gray-300 text-sm outline-none transition-all glow-hover shadow-inner"
                 />
               </div>
 
@@ -835,7 +896,7 @@ function Dashboard() {
                 onClick={handleSaveProfile} disabled={isSavingProfile}
                 className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-extrabold py-4 px-6 rounded-2xl shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:shadow-[0_0_30px_rgba(59,130,246,0.5)] disabled:opacity-50 transition-all flex items-center justify-center gap-2 btn-press"
               >
-                <CheckCircle2 size={18}/> {isSavingProfile ? "Saving Profile..." : "Save Profile Data"}
+                <CheckCircle2 size={18}/> {isSavingProfile ? "Saving..." : "Save Profile Data"}
               </button>
             </div>
           </div>
@@ -1003,7 +1064,7 @@ function Dashboard() {
               </div>
 
               {generatedBid ? (
-                /* --- TRUE WYSIWYG EDITOR (REACT QUILL) WITH REF --- */
+                /* --- TRUE WYSIWYG EDITOR (REACT QUILL) --- */
                 <div className="flex-grow bg-gray-950/50 border border-gray-800 rounded-2xl overflow-hidden mb-4 shadow-inner custom-quill-container">
                   <ReactQuill ref={quillRef} theme="snow" value={generatedBid} onChange={setGeneratedBid} className="h-full min-h-[300px]" />
                 </div>
@@ -1023,17 +1084,15 @@ function Dashboard() {
 
                   <div className="p-5 bg-gray-950/50 border border-gray-800 rounded-2xl">
                     <div className="flex justify-between items-center mb-3">
-                      <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest">AI Snippet Overrides</span>
+                      <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest">AI Post-Processing & Overrides</span>
                       {isRevising && <span className="text-[10px] text-purple-400 animate-pulse font-bold tracking-widest uppercase">Processing...</span>}
                     </div>
                     
-                    <p className="text-xs text-purple-400 mb-3 italic">Highlight a specific sentence above, then click a magic button to rewrite ONLY that part!</p>
-
                     <div className="flex gap-2 flex-wrap mb-4">
                       <button onClick={() => handleAiRevise("Make this much shorter and more concise.")} disabled={isRevising} className="bg-purple-900/20 hover:bg-purple-800/30 border border-purple-800/50 text-purple-300 text-xs font-bold py-2.5 px-4 rounded-xl disabled:opacity-50 transition-all btn-press flex items-center gap-2"><Wand2 size={12}/> Compact</button>
                       <button onClick={() => handleAiRevise("Make the tone more aggressive, confident, and persuasive.")} disabled={isRevising} className="bg-purple-900/20 hover:bg-purple-800/30 border border-purple-800/50 text-purple-300 text-xs font-bold py-2.5 px-4 rounded-xl disabled:opacity-50 transition-all btn-press flex items-center gap-2"><Wand2 size={12}/> Aggressive</button>
                       <button onClick={() => handleAiRevise("Fix any grammar mistakes and polish the language.")} disabled={isRevising} className="bg-emerald-900/20 hover:bg-emerald-800/30 border border-emerald-800/50 text-emerald-300 text-xs font-bold py-2.5 px-4 rounded-xl disabled:opacity-50 transition-all btn-press flex items-center gap-2"><Wand2 size={12}/> Polish</button>
-                      <button onClick={() => handleAiRevise("Summarize this into a short, punchy email cover letter.")} disabled={isRevising} className="bg-blue-900/20 hover:bg-blue-800/30 border border-blue-800/50 text-blue-300 text-xs font-bold py-2.5 px-4 rounded-xl disabled:opacity-50 transition-all btn-press flex items-center gap-2"><Mail size={12}/> Draft Email</button>
+                      <button onClick={() => handleAiRevise("Summarize this entire proposal into a short, punchy, 3-sentence email cover letter that I can send to the client with the PDF attached.")} disabled={isRevising} className="bg-blue-900/20 hover:bg-blue-800/30 border border-blue-800/50 text-blue-300 text-xs font-bold py-2.5 px-4 rounded-xl disabled:opacity-50 transition-all btn-press flex items-center gap-2"><Mail size={12}/> Draft Email</button>
                     </div>
 
                     <hr className="border-gray-800/50 mb-4" />
