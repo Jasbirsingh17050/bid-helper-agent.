@@ -276,6 +276,11 @@ function Dashboard() {
     setTimeout(() => setToast({ message: '', type: '' }), 4000);
   };
 
+  // Profile States
+  const [profileFullName, setProfileFullName] = useState('');
+  const [profilePicture, setProfilePicture] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
   // Generation States
   const [leadText, setLeadText] = useState('');
   const [tone, setTone] = useState('Professional');
@@ -313,10 +318,28 @@ function Dashboard() {
   const [settings, setSettings] = useState({ banned_phrases: '', confidential_keywords: '' });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
-  // --- QUILL REF FOR HIGHLIGHTED TEXT DETECTION ---
   const quillRef = useRef(null);
 
-  useEffect(() => { if (!token) navigate('/'); }, [token, navigate]);
+  const loadProfile = async () => {
+    try {
+      const response = await axios.get('https://bid-helper-agent.onrender.com/auth/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProfileFullName(response.data.full_name || '');
+      setProfilePicture(response.data.profile_picture || '');
+    } catch (error) {
+      console.error("Failed to load profile", error);
+    }
+  };
+
+  useEffect(() => { 
+    if (!token) {
+        navigate('/'); 
+    } else {
+        loadProfile(); // Load profile data when dashboard opens
+    }
+  }, [token, navigate]);
+
   useEffect(() => { if (activeTab === 'settings' && role === 'admin') loadSettings(); }, [activeTab]);
 
   const handleLogout = () => { localStorage.clear(); navigate('/'); };
@@ -401,11 +424,9 @@ function Dashboard() {
     }
   };
 
-  // --- THE AI HIGHLIGHTED SNIPPET REWRITE LOGIC ---
   const handleAiRevise = async (instruction) => {
     if (!currentGenerationId || !generatedBid) return;
 
-    // 1. Get the exact text the user has highlighted with their mouse
     const editor = quillRef.current?.getEditor();
     const selection = editor?.getSelection();
 
@@ -423,7 +444,6 @@ function Dashboard() {
 
     setIsRevising(true);
     try {
-      // 2. Send only the highlighted snippet to the backend
       const response = await axios.post(
         'https://bid-helper-agent.onrender.com/generate/ai-revise-snippet',
         {
@@ -434,12 +454,9 @@ function Dashboard() {
       );
 
       const newSnippet = response.data.content;
-
-      // 3. Delete old text and insert the AI's new text perfectly in place
       editor.deleteText(selection.index, selection.length);
       editor.insertText(selection.index, newSnippet);
 
-      // 4. Save the new state to the screen and the backend
       setGeneratedBid(editor.root.innerHTML);
       showToast(`Magic Applied! Text updated.`, "success");
 
@@ -489,7 +506,6 @@ function Dashboard() {
     showToast("Client Link Copied!", "success");
   };
 
-  // DYNAMIC SCRIPT LOADER TO BYPASS VERCEL BUILD ERRORS
   const loadScript = (src) => {
     return new Promise((resolve, reject) => {
       if (document.querySelector(`script[src="${src}"]`)) return resolve();
@@ -503,13 +519,10 @@ function Dashboard() {
 
   const handlePdfExport = async () => {
     if (!generatedBid) return;
-    
     showToast("Preparing PDF Export...", "success");
     
     try {
-      // 1. Dynamically load html2pdf ONLY when the user clicks the button
       await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
-      
       const printElement = document.createElement('div');
       const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
       
@@ -535,7 +548,6 @@ function Dashboard() {
         </div>
       `;
       
-      // 2. Call the globally loaded library
       window.html2pdf().set({
         margin: [10, 0, 10, 0], 
         filename: `${companyName.replace(/\s+/g, '_')}_Proposal.pdf`, 
@@ -552,11 +564,9 @@ function Dashboard() {
 
   const handleWordExport = async () => {
     if (!generatedBid) return;
-    
     showToast("Preparing Word Export...", "success");
 
     try {
-      // 1. Dynamically load docx & file-saver ONLY when the user clicks the button
       await loadScript('https://unpkg.com/docx@8.5.0/build/index.js');
       await loadScript('https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js');
 
@@ -564,7 +574,6 @@ function Dashboard() {
       tempDiv.innerHTML = generatedBid;
       const plainText = tempDiv.innerText || tempDiv.textContent || "";
       
-      // 2. Call the globally loaded docx library
       const doc = new window.docx.Document({
         sections: [{
           properties: {},
@@ -673,6 +682,36 @@ function Dashboard() {
     } catch (error) { showToast(error.response?.data?.detail || "Upload failed.", "error"); } finally { setIsUploading(false); }
   };
 
+  // --- NEW: Profile Handlers ---
+  const handleImageUpload = (e) => {
+    const uploadedFile = e.target.files[0];
+    if (uploadedFile) {
+      if (uploadedFile.size > 1048576) { // 1MB limit for MongoDB document safety
+        return showToast("Image is too large. Please choose an image under 1MB.", "error");
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePicture(reader.result); // Save Base64 string to state
+      };
+      reader.readAsDataURL(uploadedFile);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    try {
+      await axios.put('https://bid-helper-agent.onrender.com/auth/profile', {
+        full_name: profileFullName,
+        profile_picture: profilePicture
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      showToast("Profile updated successfully!", "success");
+    } catch (error) {
+      showToast("Failed to update profile.", "error");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
   const wordCount = generatedBid ? generatedBid.replace(/<[^>]+>/g, '').trim().split(/\s+/).length : 0;
   const readTime = Math.ceil(wordCount / 200) || 1;
 
@@ -714,10 +753,16 @@ function Dashboard() {
           
           <div className="flex items-center gap-6">
             <div className="hidden md:flex items-center gap-3 bg-gray-900/50 px-4 py-2 rounded-full border border-gray-800 shadow-inner glow-hover">
-              <UserCircle className="text-gray-400" size={20} />
+              {/* --- DYNAMIC PROFILE PICTURE IN NAVBAR --- */}
+              {profilePicture ? (
+                <img src={profilePicture} alt="Profile" className="w-8 h-8 rounded-full object-cover border border-gray-700" />
+              ) : (
+                <UserCircle className="text-gray-400" size={20} />
+              )}
+              
               <div className="flex flex-col">
                 <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mb-0.5">Authorized Agent</span>
-                <span className="text-sm text-gray-200 font-bold leading-none">{username}</span>
+                <span className="text-sm text-gray-200 font-bold leading-none">{profileFullName || username}</span>
               </div>
               {role === 'admin' && <span className="ml-2 bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] px-2.5 py-0.5 rounded-full font-bold tracking-widest uppercase">Admin</span>}
             </div>
@@ -734,6 +779,7 @@ function Dashboard() {
         {/* Navigation Tabs */}
         <div className="flex flex-wrap gap-3 mb-10 border-b border-gray-800/50 pb-6">
           <button onClick={() => setActiveTab('generate')} className={getTabClass('generate')}><Wand2 size={18}/> Generate Engine</button>
+          <button onClick={() => { setActiveTab('profile'); loadProfile(); }} className={getTabClass('profile')}><UserCircle size={18}/> My Profile</button>
           <button onClick={() => { setActiveTab('history'); loadHistory(); }} className={getTabClass('history')}><Activity size={18}/> Intelligence Logs</button>
           {role === 'admin' && (
             <>
@@ -743,6 +789,57 @@ function Dashboard() {
             </>
           )}
         </div>
+
+        {/* --- TAB: PROFILE --- */}
+        {activeTab === 'profile' && (
+          <div className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 p-8 rounded-[2rem] shadow-2xl max-w-2xl">
+            <h3 className="text-2xl font-extrabold text-white flex items-center gap-3 mb-8"><UserCircle className="text-blue-400"/> My Profile</h3>
+            
+            <div className="space-y-8">
+              
+              {/* Profile Picture Upload Section */}
+              <div className="flex items-center gap-6">
+                <div className="relative">
+                  {profilePicture ? (
+                    <img src={profilePicture} alt="Profile Preview" className="w-24 h-24 rounded-full object-cover border-4 border-gray-800 shadow-xl" />
+                  ) : (
+                    <div className="w-24 h-24 rounded-full bg-gray-800 flex items-center justify-center border-4 border-gray-700 shadow-xl">
+                      <UserCircle size={40} className="text-gray-500" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <label className="block text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-2">Profile Picture (Max 1MB)</label>
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-blue-900/20 file:text-blue-400 hover:file:bg-blue-800/30 transition-all cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Full Name Input Section */}
+              <div>
+                <label className="block text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-3">Full Name</label>
+                <input 
+                  type="text" 
+                  value={profileFullName}
+                  onChange={(e) => setProfileFullName(e.target.value)}
+                  placeholder="e.g., Jasbir Singh"
+                  className="w-full p-4 bg-gray-950/50 border border-gray-800 rounded-2xl focus:ring-2 focus:ring-blue-500/50 text-gray-300 text-sm outline-none transition-all glow-hover"
+                />
+              </div>
+
+              <button 
+                onClick={handleSaveProfile} disabled={isSavingProfile}
+                className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-extrabold py-4 px-6 rounded-2xl shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:shadow-[0_0_30px_rgba(59,130,246,0.5)] disabled:opacity-50 transition-all flex items-center justify-center gap-2 btn-press"
+              >
+                <CheckCircle2 size={18}/> {isSavingProfile ? "Saving Profile..." : "Save Profile Data"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* --- TAB: GENERATE ENGINE --- */}
         {activeTab === 'generate' && (
