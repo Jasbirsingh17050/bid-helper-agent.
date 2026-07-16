@@ -386,6 +386,7 @@ function Dashboard() {
   const [projectCategory, setProjectCategory] = useState('General / Other');
   const [targetAudience, setTargetAudience] = useState('General Manager / CEO');
   const [clientObjection, setClientObjection] = useState('');
+  const [clientWebsite, setClientWebsite] = useState(''); // NEW STATE
   
   const [generatedBid, setGeneratedBid] = useState(''); 
   const [manualAddition, setManualAddition] = useState('');
@@ -530,7 +531,8 @@ function Dashboard() {
           project_category: projectCategory, 
           word_count_target: customWords, 
           target_audience: targetAudience, 
-          client_objection: clientObjection 
+          client_objection: clientObjection,
+          client_website_url: clientWebsite // NEW FIELD SENT TO BACKEND
         },
         { headers: { Authorization: `Bearer ${token}` } } 
       );
@@ -986,6 +988,16 @@ function Dashboard() {
                     className="w-full p-3 bg-blue-950/20 border border-blue-500/30 rounded-xl text-sm text-blue-200 outline-none focus:ring-1 focus:ring-blue-400 transition-all glow-hover placeholder-blue-700"
                   />
                 </div>
+              </div>
+
+              {/* NEW AUTO-SCRAPER INPUT */}
+              <div className="mb-4">
+                <label className="block text-[10px] font-extrabold text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                  <Globe size={14} /> Client Website URL (Auto-Scraper)
+                </label>
+                <input type="text" value={clientWebsite} onChange={(e) => setClientWebsite(e.target.value)} placeholder="e.g., www.client-company.com"
+                  className="w-full p-4 bg-emerald-950/10 border border-emerald-500/30 rounded-xl text-sm text-emerald-200 outline-none focus:ring-1 focus:ring-emerald-400 transition-all glow-hover placeholder-emerald-800/60 shadow-inner"
+                />
               </div>
 
               <div className="mb-8">

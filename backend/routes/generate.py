@@ -8,6 +8,8 @@ from routes.auth import get_current_user
 import os
 from groq import AsyncGroq
 from datetime import datetime, timezone
+import requests
+import re
 
 router = APIRouter(prefix="/generate", tags=["AI Generation"])
 
@@ -22,11 +24,35 @@ class BidRequest(BaseModel):
     word_count_target: Optional[str] = ""
     target_audience: str = "General Manager / CEO"
     client_objection: Optional[str] = ""
+    client_website_url: Optional[str] = ""
 
 class ReviseRequest(BaseModel):
     generation_id: str
     current_content: str
     instruction: str
+
+# NEW: Schema for our Highlighted Snippet logic
+class SnippetReviseRequest(BaseModel):
+    selected_text: str
+    instruction: str
+
+def scrape_website_text(url: str) -> str:
+    """Silently visits the client's website and extracts their core text."""
+    if not url: return ""
+    try:
+        if not url.startswith("http"): url = "https://" + url
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(url, headers=headers, timeout=5)
+        if response.status_code == 200:
+            # Strip out code and styling
+            text = re.sub(r'<style[^>]*>[\s\S]*?</style>', '', response.text, flags=re.IGNORECASE)
+            text = re.sub(r'<script[^>]*>[\s\S]*?</script>', '', text, flags=re.IGNORECASE)
+            text = re.sub(r'<[^>]+>', ' ', text)
+            # Clean up spacing and return the first 2000 characters
+            return re.sub(r'\s+', ' ', text).strip()[:2000]
+    except Exception as e:
+        print(f"Scraping failed: {e}")
+    return ""
 
 @router.post("/bid")
 async def generate_bid(request: BidRequest, current_user: dict = Depends(get_current_user)):
@@ -95,6 +121,13 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
                 "Use logic, past experience, and strategic reassurance to prove why this won't be an issue."
             )
 
+        # NEW: Inject the scraped website data!
+        scraped_context = ""
+        if request.client_website_url and request.client_website_url.strip():
+            scraped_data = scrape_website_text(request.client_website_url.strip())
+            if scraped_data:
+                scraped_context = f"\n\nCRITICAL CLIENT INFO (Scraped directly from their website URL): '{scraped_data}'\nYou MUST seamlessly incorporate their company mission, values, or wording into the proposal to make it highly personalized and prove we researched them."
+
         system_prompt = (
             f"You are an expert sales engineer and proposal writer specializing in {request.project_category} projects. "
             "Write a highly convincing, professional bid for the following job lead.\n\n"
@@ -103,6 +136,7 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             f"Please write it in a '{request.tone}' tone.\n\n"
             f"{size_prompt}\n\n"
             f"{objection_instruction}\n\n"
+            f"{scraped_context}\n\n"
             "Use the following successful past projects from our company as evidence of our expertise. "
             "Incorporate relevant metrics and technologies from these past projects to prove we can do the job:\n"
             f"{kb_context}\n\n"
@@ -193,3 +227,30 @@ async def ai_revise_bid(request: ReviseRequest, current_user: dict = Depends(get
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI Revision failed: {str(e)}")
+
+# NEW: Snippet Rewrite Logic
+@router.post("/ai-revise-snippet")
+async def ai_revise_snippet(request: SnippetReviseRequest, current_user: dict = Depends(get_current_user)):
+    """Rewrites ONLY the specific text the user highlighted."""
+    try:
+        system_prompt = (
+            "You are an expert editor. You will be given a specific snippet of text from a sales bid and an instruction on how to change it. "
+            "Output ONLY the newly revised text snippet. Do not include introductory text, quotes, or formatting around it."
+        )
+        user_prompt = f"CURRENT TEXT SNIPPET:\n{request.selected_text}\n\nINSTRUCTION: {request.instruction}\n\nREVISED TEXT SNIPPET:"
+
+        chat_completion = await groq_client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            model="llama-3.3-70b-versatile",
+            temperature=0.7,
+            max_tokens=1000,
+        )
+
+        revised_text = chat_completion.choices[0].message.content.strip()
+        return {"content": revised_text}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI Snippet Revision failed: {str(e)}")
