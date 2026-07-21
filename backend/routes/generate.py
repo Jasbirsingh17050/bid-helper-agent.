@@ -10,6 +10,12 @@ from groq import AsyncGroq
 from datetime import datetime, timezone
 import requests
 import re
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from dotenv import load_dotenv
+
+load_dotenv()
 
 router = APIRouter(prefix="/generate", tags=["AI Generation"])
 
@@ -31,24 +37,21 @@ class ReviseRequest(BaseModel):
     current_content: str
     instruction: str
 
-# NEW: Schema for our Highlighted Snippet logic
-class SnippetReviseRequest(BaseModel):
-    selected_text: str
-    instruction: str
+class EmailProposalRequest(BaseModel):
+    generation_id: str
+    client_email: str
 
 def scrape_website_text(url: str) -> str:
     """Silently visits the client's website and extracts their core text."""
     if not url: return ""
     try:
         if not url.startswith("http"): url = "https://" + url
-        headers = {'User-Agent': 'Mozilla/5.0'}
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
         response = requests.get(url, headers=headers, timeout=5)
         if response.status_code == 200:
-            # Strip out code and styling
             text = re.sub(r'<style[^>]*>[\s\S]*?</style>', '', response.text, flags=re.IGNORECASE)
             text = re.sub(r'<script[^>]*>[\s\S]*?</script>', '', text, flags=re.IGNORECASE)
             text = re.sub(r'<[^>]+>', ' ', text)
-            # Clean up spacing and return the first 2000 characters
             return re.sub(r'\s+', ' ', text).strip()[:2000]
     except Exception as e:
         print(f"Scraping failed: {e}")
@@ -57,7 +60,6 @@ def scrape_website_text(url: str) -> str:
 @router.post("/bid")
 async def generate_bid(request: BidRequest, current_user: dict = Depends(get_current_user)):
     try:
-        # 1. Search our vector database for past projects (Lightning Fast)
         search_results = await search_projects(request.lead_text, limit=2)
         
         kb_context = ""
@@ -69,7 +71,6 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
         if not kb_context.strip():
             kb_context = "No specific past projects found for this domain. Rely on general expertise."
 
-        # 2. Get settings (Banned Phrases)
         settings_doc = await settings_collection.find_one({})
         banned_phrases_instruction = ""
         if settings_doc:
@@ -78,50 +79,13 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
                 banned_phrases_instruction = f"\n\nCRITICAL INSTRUCTION: You MUST NOT use any of the following cliché phrases in your response: {', '.join(banned_phrases)}."
 
         import json 
-
-        # 3. Dynamic Size & Prompting Logic
+        
         size_prompt = ""
-        if request.word_count_target and request.word_count_target.strip():
-            target = request.word_count_target.strip()
-            size_prompt = (
-                f"CRITICAL SIZE REQUIREMENT: You MUST write a proposal that is AT LEAST {target} words long. "
-                "Do not summarize. To hit this massive word count, you MUST include the following exhaustive sections:\n"
-                "1. Deep-Dive Executive Summary & Client Vision\n"
-                "2. Exhaustive Technical Architecture & Tech Stack Justification\n"
-                "3. 6-Phase Implementation Timeline\n"
-                "4. Rigorous Risk Mitigation & QA Testing Protocols\n"
-                "5. Long-term Support, SLAs, and Scalability Plan\n"
-                "6. Detailed Conclusion & Financial ROI projection.\n"
-                f"Keep elaborating with rich, professional detail until you surpass {target} words."
-            )
-        elif request.size == "Short":
-            size_prompt = (
-                "SIZE REQUIREMENT: Small / Short Bid (STRICTLY 100 - 200 Words MAX).\n"
-                "CRITICAL: Do NOT exceed 200 words. Cut out all fluff.\n"
-                "Target Scope: Simple, transactional proposals."
-            )
-        elif request.size == "Medium":
-            size_prompt = (
-                "SIZE REQUIREMENT: Medium Bid (STRICTLY 200 - 320 Words MAX).\n"
-                "CRITICAL: Do NOT exceed 320 words under any circumstance.\n"
-                "Target Scope: Standard milestones or fixed-price redesigns."
-            )
-        else:
-            size_prompt = (
-                "SIZE REQUIREMENT: Large Bid (STRICTLY 320 - 550 Words MAX).\n"
-                "CRITICAL: Keep this strictly between 320 and 550 words.\n"
-                "Target Scope: Enterprise RFPs, corporate service contracts."
-            )
+        if request.size == "Short": size_prompt = "SIZE REQUIREMENT: Small / Short Bid (STRICTLY 100 - 200 Words MAX)."
+        elif request.size == "Medium": size_prompt = "SIZE REQUIREMENT: Medium Bid (STRICTLY 200 - 320 Words MAX)."
+        else: size_prompt = "SIZE REQUIREMENT: Large Bid (STRICTLY 320 - 550 Words MAX)."
 
-        objection_instruction = ""
-        if request.client_objection and request.client_objection.strip():
-            objection_instruction = (
-                f"\n\nCRITICAL SALES STRATEGY (OVERCOME OBJECTION): The client has a specific worry: '{request.client_objection}'. "
-                "You MUST dedicate a specific paragraph in this proposal to preemptively and professionally dismantling this concern. "
-                "Use logic, past experience, and strategic reassurance to prove why this won't be an issue."
-            )
-
-        # NEW: Inject the scraped website data!
+        # OPTION 1: CLIENT WEBSITE SCRAPING INJECTION
         scraped_context = ""
         if request.client_website_url and request.client_website_url.strip():
             scraped_data = scrape_website_text(request.client_website_url.strip())
@@ -132,23 +96,16 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             f"You are an expert sales engineer and proposal writer specializing in {request.project_category} projects. "
             "Write a highly convincing, professional bid for the following job lead.\n\n"
             f"TARGET AUDIENCE: You are writing this proposal specifically for a {request.target_audience}. "
-            "Tailor your vocabulary, technical depth, and value proposition to appeal directly to this persona's priorities.\n\n"
-            f"Please write it in a '{request.tone}' tone.\n\n"
-            f"{size_prompt}\n\n"
-            f"{objection_instruction}\n\n"
-            f"{scraped_context}\n\n"
-            "Use the following successful past projects from our company as evidence of our expertise. "
-            "Incorporate relevant metrics and technologies from these past projects to prove we can do the job:\n"
+            f"Please write it in a '{request.tone}' tone.\n\n{size_prompt}\n\n{scraped_context}\n\n"
+            "Below are examples of PAST successful projects we have completed:\n"
             f"{kb_context}\n\n"
-            "Important: Do not invent any past projects. Only use the ones provided above."
+            "CRITICAL INSTRUCTION REGARDING PAST PROJECTS:\n"
+            "Use the past projects ONLY as proof of our expertise. DO NOT assume the current client has the exact same problems as the past clients. "
+            "Do not mention irrelevant issues (like website downtime) unless the current client explicitly asked about it in their job lead. Focus strictly on solving the CURRENT client's problem.\n\n"
             f"{banned_phrases_instruction}\n\n"
-            "CRITICAL: You MUST output ONLY a valid JSON object. Do not include markdown blocks or any other text outside the JSON. "
-            "Your JSON must have EXACTLY two keys:\n"
-            "1. 'content': A string containing the fully formatted markdown proposal.\n"
-            "2. 'confidence_score': An integer between 1 and 100 representing how confident you are that this bid will win."
+            "CRITICAL: You MUST output ONLY a valid JSON object with exactly two keys: 'content' (markdown proposal) and 'confidence_score' (1-100 integer)."
         )
 
-        # 4. Generate with Lightning Fast Groq
         chat_completion = await groq_client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -169,7 +126,6 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
             generated_text = raw_output
             confidence_score = 85
 
-        # 5. Save Generation Record
         generation_doc = GenerationRecord(
             user_id=str(current_user["_id"]),
             lead_text=request.lead_text,
@@ -189,11 +145,7 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
         
         insert_result = await generations_collection.insert_one(doc_dict)
 
-        return {
-            "content": generated_text, 
-            "confidence_score": confidence_score,
-            "generation_id": str(insert_result.inserted_id)
-        }
+        return {"content": generated_text, "confidence_score": confidence_score, "generation_id": str(insert_result.inserted_id)}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
@@ -201,17 +153,11 @@ async def generate_bid(request: BidRequest, current_user: dict = Depends(get_cur
 @router.post("/ai-revise")
 async def ai_revise_bid(request: ReviseRequest, current_user: dict = Depends(get_current_user)):
     try:
-        system_prompt = (
-            "You are an expert editor. You will be given a current sales bid and an instruction on how to change it. "
-            "Output ONLY the newly revised bid text. Do not include introductory text like 'Here is the revised bid'."
-        )
+        system_prompt = "You are an expert editor. Output ONLY the newly revised bid text. Do not include introductory text."
         user_prompt = f"CURRENT BID:\n{request.current_content}\n\nINSTRUCTION: {request.instruction}\n\nREVISED BID:"
 
         chat_completion = await groq_client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
+            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
             model="llama-3.3-70b-versatile",
             temperature=0.7,
             max_tokens=4000, 
@@ -228,29 +174,56 @@ async def ai_revise_bid(request: ReviseRequest, current_user: dict = Depends(get
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI Revision failed: {str(e)}")
 
-# NEW: Snippet Rewrite Logic
-@router.post("/ai-revise-snippet")
-async def ai_revise_snippet(request: SnippetReviseRequest, current_user: dict = Depends(get_current_user)):
-    """Rewrites ONLY the specific text the user highlighted."""
+# OPTION 2: EMAIL AGENT ENDPOINT
+@router.post("/email-proposal")
+async def email_proposal(request: EmailProposalRequest, current_user: dict = Depends(get_current_user)):
     try:
-        system_prompt = (
-            "You are an expert editor. You will be given a specific snippet of text from a sales bid and an instruction on how to change it. "
-            "Output ONLY the newly revised text snippet. Do not include introductory text, quotes, or formatting around it."
-        )
-        user_prompt = f"CURRENT TEXT SNIPPET:\n{request.selected_text}\n\nINSTRUCTION: {request.instruction}\n\nREVISED TEXT SNIPPET:"
+        from bson import ObjectId
+        doc = await generations_collection.find_one({"_id": ObjectId(request.generation_id)})
+        if not doc:
+            raise HTTPException(status_code=404, detail="Proposal not found.")
 
-        chat_completion = await groq_client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            model="llama-3.3-70b-versatile",
-            temperature=0.7,
-            max_tokens=1000,
-        )
+        # Get latest content
+        content = doc.get("content", "")
+        if doc.get("revisions") and len(doc["revisions"]) > 0:
+            content = doc["revisions"][-1]["content"]
 
-        revised_text = chat_completion.choices[0].message.content.strip()
-        return {"content": revised_text}
+        # Format markdown to simple HTML for the email
+        html_content = content.replace('\n', '<br/>').replace('**', '<b>').replace('##', '<h2>')
 
+        sender_email = os.getenv("MAIL_USERNAME")
+        sender_password = os.getenv("MAIL_PASSWORD")
+
+        if not sender_email or not sender_password:
+            raise HTTPException(status_code=500, detail="Server email not configured in Render.")
+
+        message = MIMEMultipart("alternative")
+        message["Subject"] = "Strategic Project Proposal"
+        message["From"] = sender_email
+        message["To"] = request.client_email
+
+        html = f"""
+        <html>
+          <body style="font-family: Arial, sans-serif; color: #1e293b; line-height: 1.6;">
+            <div style="max-width: 800px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 10px;">
+                <h2 style="color: #2563eb;">Your Custom Project Proposal</h2>
+                <p>Hello,</p>
+                <p>Please find the strategic proposal for your project below:</p>
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;"/>
+                <div>{html_content}</div>
+            </div>
+          </body>
+        </html>
+        """
+        message.attach(MIMEText(html, "html"))
+
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, request.client_email, message.as_string())
+
+        return {"message": "Proposal successfully emailed to client!"}
+    except smtplib.SMTPException:
+         raise HTTPException(status_code=400, detail="Render Free Tier blocked the email port. Upgrade required for live emailing.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AI Snippet Revision failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
